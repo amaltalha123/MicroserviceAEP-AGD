@@ -1,0 +1,36 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "main": "app.ts",
+  "type": "commonjs",
+  "description": "",
+  "scripts": {
+    "dev": "nodemon app.ts",
+    "start": "node app.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "@clerk/clerk-sdk-node": "^4.13.23",
+    "@prisma/client": "^5.22.0",
+    "cors": "^2.8.5",
+    "date-fn": "^0.0.2",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "helmet": "^8.1.0",
+    "kafkajs": "^2.2.4",
+    "uuid": "^13.0.0",
+    "winston": "^3.19.0",
+    "zod": "^4.2.1"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^25.0.3",
+    "@types/uuid": "^11.0.0",
+    "install": "^0.13.0",
+    "nodemon": "^3.1.11",
+    "prisma": "^5.22.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}

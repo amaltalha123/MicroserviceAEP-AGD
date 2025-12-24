@@ -1,0 +1,214 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model claim_actions {
+  id                 String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  claim_id           String        @db.Uuid
+  action_type        String        @db.VarChar(100)
+  action_description String
+  performed_by       String?       @db.VarChar(255)
+  performed_by_type  String?       @db.VarChar(20)
+  performed_by_name  String?       @db.VarChar(255)
+  previous_status    claim_status?
+  new_status         claim_status?
+  action_data        Json?         @default("{}")
+  created_at         DateTime?     @default(now()) @db.Timestamptz(6)
+  claims             claims        @relation(fields: [claim_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([claim_id], map: "idx_actions_claim")
+  @@index([created_at(sort: Desc)], map: "idx_actions_date")
+}
+
+model claim_photos {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  claim_id         String    @db.Uuid
+  file_type        String    @db.VarChar(50)
+  file_url         String
+  file_name        String?   @db.VarChar(255)
+  file_size        Int?
+  uploaded_by      String?   @db.VarChar(255)
+  uploaded_by_type String?   @db.VarChar(20)
+  description      String?
+  uploaded_at      DateTime? @default(now()) @db.Timestamptz(6)
+  claims           claims    @relation(fields: [claim_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([claim_id], map: "idx_photos_claim")
+  @@index([file_type], map: "iidx_photos_type")
+}
+
+model claims {
+  id                          String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  portal_claim_id             String                @unique @db.Uuid
+  claim_number                String                @db.VarChar(20)
+  service_type                service_type
+  user_id                     String                @db.VarChar(255)
+  user_email                  String                @db.VarChar(255)
+  user_name                   String?               @db.VarChar(255)
+  user_phone                  String?               @db.VarChar(50)
+  title                       String                @db.VarChar(500)
+  description                 String
+  location_address            String
+  location_lat                Decimal               @db.Decimal(10, 8)
+  location_lng                Decimal               @db.Decimal(11, 8)
+  priority                    priority_level        @default(medium)
+  estimated_resolution_hours  Int?
+  intervention_scheduled_date DateTime?             @db.Date
+  service_specific_data       Json?                 @default("{}")
+  status                      claim_status?         @default(received)
+  assigned_team_id            String?               @db.Uuid
+  team_leader_id              String?               @db.Uuid
+  internal_ticket_number      String?               @unique @db.VarChar(50)
+  resolution_description      String?
+  resolution_submitted_at     DateTime?             @db.Timestamptz(6)
+  resolution_submitted_by     String?               @db.Uuid
+  created_at                  DateTime?             @default(now()) @db.Timestamptz(6)
+  updated_at                  DateTime?             @default(now()) @db.Timestamptz(6)
+  team_assigned_at            DateTime?             @db.Timestamptz(6)
+  resolved_at                 DateTime?             @db.Timestamptz(6)
+  last_kafka_message_id       String?               @db.VarChar(255)
+  claim_actions               claim_actions[]
+  claim_photos                claim_photos[]
+  email_notifications         email_notifications[]
+  intervention_teams          intervention_teams?
+  kafka_messages_log          kafka_messages_log[]
+
+  @@index([created_at(sort: Desc)], map: "idx_claims_created_at")
+  @@index([internal_ticket_number], map: "idx_claims_internal_ticket")
+  @@index([portal_claim_id], map: "idx_claims_portal_id")
+  @@index([priority], map: "idx_claims_priority")
+  @@index([intervention_scheduled_date], map: "idx_claims_scheduled_date")
+  @@index([service_type], map: "idx_claims_service_type")
+  @@index([status], map: "idx_claims_status")
+}
+
+model email_notifications {
+  id                 String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  claim_id           String?             @db.Uuid
+  team_id            String?             @db.Uuid
+  recipient_email    String              @db.VarChar(255)
+  recipient_name     String?             @db.VarChar(255)
+  recipient_type     String?             @db.VarChar(50)
+  email_type         String              @db.VarChar(100)
+  subject            String              @db.VarChar(500)
+  email_body_html    String?
+  resolution_link    String?
+  sent               Boolean?            @default(false)
+  sent_at            DateTime?           @db.Timestamptz(6)
+  error_message      String?
+  created_at         DateTime?           @default(now()) @db.Timestamptz(6)
+  claims             claims?             @relation(fields: [claim_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  intervention_teams intervention_teams? @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([claim_id], map: "idx_emails_claim")
+  @@index([sent, created_at], map: "idx_emails_sent")
+}
+
+model employees {
+  id                    String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employee_number       String               @unique @db.VarChar(50)
+  clerk_user_id         String?              @unique @db.VarChar(255)
+  full_name             String               @db.VarChar(255)
+  email                 String               @unique @db.VarChar(255)
+  phone                 String?              @db.VarChar(50)
+  service_type          service_type
+  status                employee_status?     @default(available)
+  total_interventions   Int?                 @default(0)
+  current_active_claims Int?                 @default(0)
+  is_active             Boolean?             @default(true)
+  created_at            DateTime?            @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime?            @default(now()) @db.Timestamptz(6)
+  intervention_teams    intervention_teams[]
+  team_members          team_members[]
+
+  @@index([service_type], map: "idx_employees_service")
+  @@index([service_type, status], map: "idx_employees_service_status")
+  @@index([status], map: "idx_employees_status")
+}
+
+model intervention_teams {
+  id                          String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  claim_id                    String                @unique @db.Uuid
+  service_type                service_type
+  team_leader_id              String                @db.Uuid
+  resolution_token            String                @unique @db.VarChar(255)
+  resolution_token_expires_at DateTime?             @db.Timestamptz(6)
+  is_active                   Boolean?              @default(true)
+  created_at                  DateTime?             @default(now()) @db.Timestamptz(6)
+  completed_at                DateTime?             @db.Timestamptz(6)
+  email_notifications         email_notifications[]
+  claims                      claims                @relation(fields: [claim_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  employees                   employees             @relation(fields: [team_leader_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  team_members                team_members[]
+
+  @@index([claim_id], map: "idx_teams_claim")
+  @@index([team_leader_id], map: "idx_teams_leader")
+  @@index([resolution_token], map: "idx_teams_token")
+}
+
+model kafka_messages_log {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  claim_id         String?   @db.Uuid
+  kafka_message_id String    @db.VarChar(255)
+  kafka_topic      String    @db.VarChar(255)
+  message_type     String    @db.VarChar(100)
+  payload          Json
+  direction        String    @db.VarChar(10)
+  processed        Boolean?  @default(false)
+  processed_at     DateTime? @db.Timestamptz(6)
+  error_message    String?
+  created_at       DateTime? @default(now()) @db.Timestamptz(6)
+  claims           claims?   @relation(fields: [claim_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([claim_id], map: "idx_kafka_claim")
+  @@index([processed, created_at], map: "idx_kafka_processed")
+}
+
+model team_members {
+  id                   String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  team_id              String             @db.Uuid
+  employee_id          String             @db.Uuid
+  is_leader            Boolean?           @default(false)
+  notification_sent    Boolean?           @default(false)
+  notification_sent_at DateTime?          @db.Timestamptz(6)
+  created_at           DateTime?          @default(now()) @db.Timestamptz(6)
+  employees            employees          @relation(fields: [employee_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  intervention_teams   intervention_teams @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([team_id, employee_id])
+  @@index([employee_id], map: "idx_team_members_employee")
+  @@index([team_id], map: "idx_team_members_team")
+}
+
+enum claim_status {
+  submitted
+  received
+  assigned
+  in_progress
+  pending_info
+  resolved
+  closed
+  rejected
+}
+
+enum employee_status {
+  available
+  unavailable
+}
+
+enum priority_level {
+  low
+  medium
+  high
+  urgent
+}
+
+enum service_type {
+  lighting
+  waste
+}
