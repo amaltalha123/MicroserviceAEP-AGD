@@ -1,11 +1,8 @@
 -- ============================================
 -- MICROSERVICE: ÉCLAIRAGE PUBLIC & DÉCHETS
 -- Base de données pour traitement des réclamations
--- équipes automatiques
+--équipes automatiques
 -- ============================================
-
--- Activer l'extension plpgsql si nécessaire
-CREATE EXTENSION IF NOT EXISTS plpgsql;
 
 -- Types énumérés
 CREATE TYPE service_type AS ENUM ('lighting', 'waste');
@@ -24,6 +21,8 @@ CREATE TYPE claim_status AS ENUM (
 CREATE TYPE priority_level AS ENUM ('low', 'medium', 'high', 'urgent');
 
 CREATE TYPE employee_status AS ENUM ('available', 'unavailable');
+
+
 
 -- ============================================
 -- TABLE PRINCIPALE: RÉCLAMATIONS
@@ -66,6 +65,9 @@ CREATE TABLE claims (
     -- Statut
     status                  claim_status DEFAULT 'received',
     
+    -- Équipe assignée (ID de l'équipe créée automatiquement)
+    assigned_team_id        UUID,
+    
     -- Chef d'équipe
     team_leader_id          UUID,
     
@@ -75,7 +77,7 @@ CREATE TABLE claims (
     -- Résolution (rempli par le chef d'équipe)
     resolution_description  TEXT,
     resolution_submitted_at TIMESTAMP WITH TIME ZONE,
-    resolution_submitted_by UUID,
+    resolution_submitted_by UUID,                           -- ID du chef qui a soumis
     
     -- Timestamps
     created_at              TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -84,15 +86,7 @@ CREATE TABLE claims (
     resolved_at             TIMESTAMP WITH TIME ZONE,
     
     -- Kafka tracking
-    last_kafka_message_id   VARCHAR(255),
-    
-    -- Validation superviseur
-    requires_supervisor_validation BOOLEAN DEFAULT false,
-    
-    -- Contraintes
-    CONSTRAINT check_valid_latitude CHECK (location_lat BETWEEN -90 AND 90),
-    CONSTRAINT check_valid_longitude CHECK (location_lng BETWEEN -180 AND 180),
-    CONSTRAINT check_positive_resolution_hours CHECK (estimated_resolution_hours IS NULL OR estimated_resolution_hours > 0)
+    last_kafka_message_id   VARCHAR(255)
 );
 
 -- ============================================
@@ -102,15 +96,15 @@ CREATE TABLE employees (
     id                      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     
     -- Identité
-    employee_number         VARCHAR(50) UNIQUE NOT NULL,
-    clerk_user_id           VARCHAR(255) UNIQUE,
+    employee_number         VARCHAR(50) UNIQUE NOT NULL,    -- Matricule
+    clerk_user_id           VARCHAR(255) UNIQUE,            -- ID Clerk si l'employé a un compte
     
     full_name               VARCHAR(255) NOT NULL,
     email                   VARCHAR(255) NOT NULL UNIQUE,
     phone                   VARCHAR(50),
     
     -- Service
-    service_type            service_type NOT NULL,
+    service_type            service_type NOT NULL,          -- lighting ou waste
     
     -- Statut de disponibilité
     status                  employee_status DEFAULT 'available',
@@ -119,16 +113,23 @@ CREATE TABLE employees (
     total_interventions     INTEGER DEFAULT 0,
     current_active_claims   INTEGER DEFAULT 0,
     
-    is_active               BOOLEAN DEFAULT true,
+    is_active               BOOLEAN DEFAULT true,           -- Employé actif ou archivé
     
     created_at              TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at              TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    
+    
 );
 
--- Index employees
-CREATE INDEX idx_employees_service ON employees (service_type);
-CREATE INDEX idx_employees_status ON employees (status);
-CREATE INDEX idx_employees_service_status ON employees (service_type, status);
+--Index
+CREATE INDEX idx_employees_service
+ON employees (service_type);
+
+CREATE INDEX idx_employees_status
+ON employees (status);
+
+CREATE INDEX idx_employees_service_status
+ON employees (service_type, status);
 
 -- ============================================
 -- TABLE: ÉQUIPES D'INTERVENTION
@@ -142,11 +143,8 @@ CREATE TABLE intervention_teams (
     -- Chef d'équipe
     team_leader_id          UUID NOT NULL REFERENCES employees(id),
     
-    -- Superviseur (uniquement pour éclairage)
-    team_supervisor_id      UUID REFERENCES employees(id),
-    
     -- Token unique pour le formulaire de résolution
-    resolution_token        VARCHAR(255) UNIQUE NOT NULL,
+    resolution_token        VARCHAR(255) UNIQUE NOT NULL,   -- UUID pour le lien email
     resolution_token_expires_at TIMESTAMP WITH TIME ZONE,
     
     -- Statut de l'équipe
@@ -154,13 +152,15 @@ CREATE TABLE intervention_teams (
     
     created_at              TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     completed_at            TIMESTAMP WITH TIME ZONE
+    
 );
-
--- Index intervention_teams
-CREATE INDEX idx_teams_claim ON intervention_teams (claim_id);
-CREATE INDEX idx_teams_leader ON intervention_teams (team_leader_id);
-CREATE INDEX idx_teams_token ON intervention_teams (resolution_token);
-CREATE INDEX idx_intervention_teams_active ON intervention_teams (claim_id, is_active) WHERE is_active = true;
+  -- Index
+CREATE INDEX idx_teams_claim
+ON intervention_teams (claim_id);
+CREATE INDEX idx_teams_leader
+ON intervention_teams (team_leader_id);
+CREATE INDEX idx_teams_token
+ON intervention_teams (resolution_token);
 
 -- ============================================
 -- TABLE: MEMBRES D'ÉQUIPE
@@ -171,7 +171,6 @@ CREATE TABLE team_members (
     employee_id             UUID NOT NULL REFERENCES employees(id),
     
     is_leader               BOOLEAN DEFAULT false,
-    is_supervisor           BOOLEAN DEFAULT false,
     
     -- Notifications
     notification_sent       BOOLEAN DEFAULT false,
@@ -179,14 +178,16 @@ CREATE TABLE team_members (
     
     created_at              TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     
+   
+    
     -- Contrainte: un employé ne peut être qu'une fois dans une équipe
     UNIQUE(team_id, employee_id)
 );
-
--- Index team_members
-CREATE INDEX idx_team_members_team ON team_members (team_id);
-CREATE INDEX idx_team_members_employee ON team_members (employee_id);
-
+--Index
+CREATE INDEX idx_team_members_team
+ON team_members (team_id);
+CREATE INDEX idx_team_members_employee
+ON team_members (employee_id);
 -- ============================================
 -- TABLE: PHOTOS RÉCLAMATION
 -- ============================================
@@ -195,7 +196,7 @@ CREATE TABLE claim_photos (
     claim_id                UUID NOT NULL REFERENCES claims(id) ON DELETE CASCADE,
     
     -- Type de photo
-    file_type               VARCHAR(50) NOT NULL,
+    file_type              VARCHAR(50) NOT NULL,           -- 'initial' (client) ou 'resolution' (chef équipe)
     
     -- Fichier
     file_url                TEXT NOT NULL,
@@ -203,19 +204,22 @@ CREATE TABLE claim_photos (
     file_size               INTEGER,
     
     -- Qui a uploadé
-    uploaded_by             VARCHAR(255),
-    uploaded_by_type        VARCHAR(20),
+    uploaded_by             VARCHAR(255),                   -- user_id ou employee_id
+    uploaded_by_type        VARCHAR(20),                    -- 'client' ou 'employee'
     
     -- Metadata
     description             TEXT,
     
     uploaded_at             TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    
+   
 );
+--
+CREATE INDEX idx_photos_claim
+ON claim_photos (claim_id);
 
--- Index claim_photos
-CREATE INDEX idx_photos_claim ON claim_photos (claim_id);
-CREATE INDEX idx_photos_type ON claim_photos (file_type);
-
+CREATE INDEX iidx_photos_type
+ON claim_photos (file_type);
 -- ============================================
 -- TABLE: HISTORIQUE DES ACTIONS
 -- ============================================
@@ -224,10 +228,13 @@ CREATE TABLE claim_actions (
     claim_id                UUID NOT NULL REFERENCES claims(id) ON DELETE CASCADE,
     
     -- Action
-    action_type             VARCHAR(100) NOT NULL,
+    action_type             VARCHAR(100) NOT NULL,          -- 'received', 'team_created', 'in_progress', 'resolved', 'status_change'
     action_description      TEXT NOT NULL,
     
     -- Acteur
+    performed_by            VARCHAR(255),                   -- system, employee_id, user_id
+    performed_by_type       VARCHAR(20),                    -- 'system', 'employee', 'client'
+    performed_by_name       VARCHAR(255),
     
     -- Changement de statut
     previous_status         claim_status,
@@ -237,12 +244,15 @@ CREATE TABLE claim_actions (
     action_data             JSONB DEFAULT '{}',
     
     created_at              TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    
+    -- Index
+    
 );
+CREATE INDEX idx_actions_claim
+ON claim_actions (claim_id);
 
--- Index claim_actions
-CREATE INDEX idx_actions_claim ON claim_actions (claim_id);
-CREATE INDEX idx_actions_date ON claim_actions (created_at DESC);
-
+CREATE INDEX idx_actions_date
+ON claim_actions (created_at DESC);
 -- ============================================
 -- TABLE: LOG KAFKA
 -- ============================================
@@ -252,11 +262,11 @@ CREATE TABLE kafka_messages_log (
     
     kafka_message_id        VARCHAR(255) NOT NULL,
     kafka_topic             VARCHAR(255) NOT NULL,
-    message_type            VARCHAR(100) NOT NULL,
+    message_type            VARCHAR(100) NOT NULL,          -- CLAIM_CREATED, STATUS_UPDATE, etc.
     
     payload                 JSONB NOT NULL,
     
-    direction               VARCHAR(10) NOT NULL,
+    direction               VARCHAR(10) NOT NULL,           -- 'inbound' ou 'outbound'
     
     processed               BOOLEAN DEFAULT false,
     processed_at            TIMESTAMP WITH TIME ZONE,
@@ -265,10 +275,11 @@ CREATE TABLE kafka_messages_log (
     created_at              TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Index kafka_messages_log
-CREATE INDEX idx_kafka_claim ON kafka_messages_log (claim_id);
-CREATE INDEX idx_kafka_processed ON kafka_messages_log (processed, created_at);
+CREATE INDEX idx_kafka_claim
+ON kafka_messages_log (claim_id);
 
+CREATE INDEX idx_kafka_processed
+ON kafka_messages_log (processed, created_at);
 -- ============================================
 -- TABLE: NOTIFICATIONS EMAILS
 -- ============================================
@@ -279,15 +290,15 @@ CREATE TABLE email_notifications (
     
     recipient_email         VARCHAR(255) NOT NULL,
     recipient_name          VARCHAR(255),
-    recipient_type          VARCHAR(50),
+    recipient_type          VARCHAR(50),                    -- 'team_leader', 'team_member'
     
-    email_type              VARCHAR(100) NOT NULL,
+    email_type              VARCHAR(100) NOT NULL,          -- 'team_assignment', 'resolution_reminder'
     subject                 VARCHAR(500) NOT NULL,
     
     -- Contenu
     email_body_html         TEXT,
     
-    -- Lien de résolution
+    -- Lien de résolution (pour chef d'équipe)
     resolution_link         TEXT,
     
     -- Statut d'envoi
@@ -298,10 +309,11 @@ CREATE TABLE email_notifications (
     created_at              TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Index email_notifications
-CREATE INDEX idx_emails_claim ON email_notifications (claim_id);
-CREATE INDEX idx_emails_sent ON email_notifications (sent, created_at);
+CREATE INDEX idx_emails_claim 
+ON email_notifications (claim_id);
 
+CREATE INDEX idx_emails_sent 
+ON email_notifications (sent, created_at);
 -- ============================================
 -- INDEXES SUPPLÉMENTAIRES
 -- ============================================
@@ -312,15 +324,28 @@ CREATE INDEX idx_claims_priority ON claims(priority);
 CREATE INDEX idx_claims_scheduled_date ON claims(intervention_scheduled_date);
 CREATE INDEX idx_claims_created_at ON claims(created_at DESC);
 CREATE INDEX idx_claims_internal_ticket ON claims(internal_ticket_number);
-CREATE INDEX idx_claims_supervisor_validation ON claims(requires_supervisor_validation) WHERE requires_supervisor_validation = true;
 
+-- 1. Ajouter colonne superviseur dans intervention_teams
+ALTER TABLE intervention_teams 
+ADD COLUMN team_supervisor_id UUID REFERENCES employees(id);
+
+-- 2. Ajouter colonne is_supervisor dans team_members
+ALTER TABLE team_members 
+ADD COLUMN is_supervisor BOOLEAN DEFAULT false;
+
+-- 3. Ajouter colonne pour identifier le type de validation requis
+ALTER TABLE claims 
+ADD COLUMN requires_supervisor_validation BOOLEAN DEFAULT false;
+
+-- 4. Créer index pour les requêtes de validation
+CREATE INDEX idx_claims_supervisor_validation 
+ON claims(requires_supervisor_validation) 
+WHERE requires_supervisor_validation = true;
 -- ============================================
 -- FONCTION: GÉNÉRATION NUMÉRO DE TICKET
 -- ============================================
 CREATE OR REPLACE FUNCTION generate_internal_ticket_number()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-AS $$
+RETURNS TRIGGER AS $$
 DECLARE
     prefix VARCHAR(5);
     year_part VARCHAR(4);
@@ -344,7 +369,7 @@ BEGIN
     NEW.internal_ticket_number := prefix || '-' || year_part || '-' || LPAD(seq_num::TEXT, 5, '0');
     RETURN NEW;
 END;
-$$;
+$$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trigger_generate_ticket_number
     BEFORE INSERT ON claims
@@ -355,14 +380,12 @@ CREATE TRIGGER trigger_generate_ticket_number
 -- FONCTION: MISE À JOUR TIMESTAMP
 -- ============================================
 CREATE OR REPLACE FUNCTION update_updated_at()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-AS $$
+RETURNS TRIGGER AS $$
 BEGIN
     NEW.updated_at = NOW();
     RETURN NEW;
 END;
-$$;
+$$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trigger_update_claims_timestamp
     BEFORE UPDATE ON claims
@@ -379,30 +402,25 @@ CREATE TRIGGER trigger_update_employees_timestamp
 -- ============================================
 CREATE OR REPLACE FUNCTION calculate_intervention_date(
     p_priority priority_level
-) 
-RETURNS DATE
-LANGUAGE plpgsql
-AS $$
+) RETURNS DATE AS $$
 BEGIN
     RETURN CASE p_priority
-        WHEN 'urgent' THEN CURRENT_DATE
-        WHEN 'high' THEN CURRENT_DATE + INTERVAL '1 day'
-        WHEN 'medium' THEN CURRENT_DATE + INTERVAL '3 days'
-        WHEN 'low' THEN CURRENT_DATE + INTERVAL '7 days'
+        WHEN 'urgent' THEN CURRENT_DATE                    -- Aujourd'hui
+        WHEN 'high' THEN CURRENT_DATE + INTERVAL '1 day'   -- Demain
+        WHEN 'medium' THEN CURRENT_DATE + INTERVAL '3 days' -- Dans 3 jours
+        WHEN 'low' THEN CURRENT_DATE + INTERVAL '7 days'   -- Dans 7 jours
     END;
 END;
-$$;
+$$ LANGUAGE plpgsql;
 
 -- ============================================
--- FONCTION: CRÉATION AUTOMATIQUE D'ÉQUIPE
+-- MODIFIER LA FONCTION DE CRÉATION D'ÉQUIPE
+-- Pour assigner un superviseur uniquement pour l'éclairage
 -- ============================================
 CREATE OR REPLACE FUNCTION auto_create_intervention_team(
     p_claim_id UUID,
     p_service_type service_type
-) 
-RETURNS UUID
-LANGUAGE plpgsql
-AS $$
+) RETURNS UUID AS $$
 DECLARE
     v_team_id UUID;
     v_team_leader_id UUID;
@@ -413,6 +431,8 @@ DECLARE
     v_team_size INTEGER;
 BEGIN
     -- Déterminer la taille de l'équipe selon le service
+    -- Éclairage: 3 membres + 1 superviseur = 4 personnes
+    -- Déchets: 3 membres seulement
     v_team_size := CASE 
         WHEN p_service_type = 'lighting' THEN 4 
         ELSE 3 
@@ -441,8 +461,8 @@ BEGIN
     SELECT 
         p_claim_id,
         p_service_type,
-        (SELECT id FROM employees WHERE service_type = p_service_type AND status = 'available' LIMIT 1),
-        NULL,
+        (SELECT id FROM employees WHERE service_type = p_service_type AND status = 'available' LIMIT 1), -- temporaire
+        NULL, -- sera défini après si nécessaire
         v_resolution_token,
         NOW() + INTERVAL '30 days'
     RETURNING id INTO v_team_id;
@@ -450,14 +470,14 @@ BEGIN
     -- Pour l'éclairage: sélectionner 3 membres + 1 superviseur (4 personnes)
     -- Pour déchets: sélectionner 3 membres seulement
     IF p_service_type = 'lighting' THEN
-        -- ÉCLAIRAGE: Sélectionner le superviseur en premier
+        -- ÉCLAIRAGE: Sélectionner le superviseur en premier (l'employé le plus expérimenté)
         SELECT id INTO v_team_supervisor_id
         FROM employees
         WHERE service_type = p_service_type 
           AND status = 'available'
           AND is_active = true
         ORDER BY 
-            total_interventions DESC,
+            total_interventions DESC,  -- Le plus expérimenté
             created_at ASC
         LIMIT 1;
         
@@ -476,14 +496,14 @@ BEGIN
             current_active_claims = current_active_claims + 1
         WHERE id = v_team_supervisor_id;
         
-        -- Ensuite, sélectionner les 3 membres de l'équipe
+        -- Ensuite, sélectionner les 3 membres de l'équipe (excluant le superviseur)
         FOR v_employee IN (
             SELECT id, full_name
             FROM employees
             WHERE service_type = p_service_type 
               AND status = 'available'
               AND is_active = true
-              AND id != v_team_supervisor_id
+              AND id != v_team_supervisor_id  -- Exclure le superviseur
             ORDER BY 
                 total_interventions ASC,
                 created_at ASC
@@ -500,7 +520,8 @@ BEGIN
                 WHERE id = v_team_id;
                 
                 UPDATE claims
-                SET team_leader_id = v_team_leader_id
+                SET team_leader_id = v_team_leader_id,
+                    assigned_team_id = v_team_id
                 WHERE id = p_claim_id;
             END IF;
             
@@ -516,7 +537,7 @@ BEGIN
         END LOOP;
         
     ELSE
-        -- DÉCHETS: Sélectionner 3 membres seulement
+        -- DÉCHETS: Sélectionner 3 membres seulement (pas de superviseur)
         FOR v_employee IN (
             SELECT id, full_name
             FROM employees
@@ -539,7 +560,8 @@ BEGIN
                 WHERE id = v_team_id;
                 
                 UPDATE claims
-                SET team_leader_id = v_team_leader_id
+                SET team_leader_id = v_team_leader_id,
+                    assigned_team_id = v_team_id
                 WHERE id = p_claim_id;
             END IF;
             
@@ -562,18 +584,17 @@ BEGIN
     
     RETURN v_team_id;
 END;
-$$;
+$$ LANGUAGE plpgsql;
+
 
 -- ============================================
--- FONCTION: LIBÉRER L'ÉQUIPE APRÈS CLÔTURE
+-- FONCTION: LIBÉRER L'ÉQUIPE APRÈS RÉSOLUTION
 -- ============================================
 CREATE OR REPLACE FUNCTION release_team_after_resolution()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-AS $$
+RETURNS TRIGGER AS $$
 BEGIN
-    -- Libérer l'équipe quand le statut passe à 'closed'
-    IF NEW.status = 'closed' AND OLD.status != 'closed' THEN
+    -- Si la réclamation passe à 'resolved'
+    IF NEW.status = 'resolved' AND OLD.status != 'resolved' THEN
         -- Remettre tous les membres de l'équipe en disponible
         UPDATE employees
         SET status = 'available',
@@ -595,7 +616,7 @@ BEGIN
     
     RETURN NEW;
 END;
-$$;
+$$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trigger_release_team
     AFTER UPDATE ON claims
@@ -603,24 +624,17 @@ CREATE TRIGGER trigger_release_team
     EXECUTE FUNCTION release_team_after_resolution();
 
 -- ============================================
--- FONCTION: VÉRIFIER DISPONIBILITÉ POUR ÉQUIPE
+-- fonction:  verifie l existance d un team
 -- ============================================
 CREATE OR REPLACE FUNCTION can_create_new_team(
     p_service service_type
 )
-RETURNS BOOLEAN
+RETURNS boolean
 LANGUAGE plpgsql
 AS $$
 DECLARE
     v_count INTEGER;
-    v_required INTEGER;
 BEGIN
-    -- Déterminer le nombre d'employés requis
-    v_required := CASE 
-        WHEN p_service = 'lighting' THEN 4 
-        ELSE 3 
-    END;
-    
     SELECT COUNT(*)
     INTO v_count
     FROM employees
@@ -628,17 +642,16 @@ BEGIN
       AND status = 'available'
       AND is_active = true;
 
-    RETURN v_count >= v_required;
+    RETURN v_count >= 3;
 END;
 $$;
 
 -- ============================================
--- FONCTION: DÉFINIR VALIDATION SUPERVISEUR
+--Ajouter trigger pour définir automatiquement requires_supervisor_validation
 -- ============================================
+
 CREATE OR REPLACE FUNCTION set_supervisor_requirement()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-AS $$
+RETURNS TRIGGER AS $$
 BEGIN
     -- Éclairage nécessite validation superviseur, Déchets non
     NEW.requires_supervisor_validation := (NEW.service_type = 'lighting');
@@ -652,18 +665,16 @@ CREATE TRIGGER trigger_set_supervisor_requirement
     EXECUTE FUNCTION set_supervisor_requirement();
 
 -- ============================================
--- FONCTION: VALIDATION PAR LE SUPERVISEUR
+-- FONCTION: VALIDATION PAR LE SUPERVISEUR (uniquement éclairage)
 -- ============================================
 CREATE OR REPLACE FUNCTION validate_claim_by_supervisor(
     p_claim_id UUID
-) 
-RETURNS BOOLEAN
-LANGUAGE plpgsql
-AS $$
+   
+) RETURNS BOOLEAN AS $$
 DECLARE
     v_service_type service_type;
+    v_is_supervisor BOOLEAN;
     v_current_status claim_status;
-    v_supervisor_name VARCHAR(255);
 BEGIN
     -- Récupérer le type de service et le statut actuel
     SELECT service_type, status 
@@ -671,23 +682,13 @@ BEGIN
     FROM claims
     WHERE id = p_claim_id;
     
-    -- Vérifier que la réclamation existe
-    IF NOT FOUND THEN
-        RAISE EXCEPTION 'Réclamation introuvable';
-    END IF;
-    
     -- Vérifier que c'est une réclamation d'éclairage
     IF v_service_type != 'lighting' THEN
         RAISE EXCEPTION 'Cette réclamation ne nécessite pas de validation superviseur';
     END IF;
     
-    -- Vérifier que le statut est 'resolved'
-    IF v_current_status != 'resolved' THEN
-        RAISE EXCEPTION 'La réclamation doit être résolue avant validation';
-    END IF;
-    
     -- Vérifier que l'employé est bien le superviseur de cette équipe
-   
+    
     
     -- Clôturer la réclamation
     UPDATE claims
@@ -696,38 +697,24 @@ BEGIN
     WHERE id = p_claim_id;
     
     -- Logger l'action
-   
-    INSERT INTO claim_actions (
-        claim_id,
-        action_type,
-        action_description,
-        previous_status,
-        new_status
-    ) VALUES (
-        p_claim_id,
-        'supervisor_validation',
-        'Validation et clôture par le superviseur',
-        v_current_status,
-        'closed'
-    );
     
     RETURN true;
 END;
-$$;
+$$ LANGUAGE plpgsql;
+
+
 
 -- ============================================
--- FONCTION: CLÔTURE DIRECTE PAR LE CHEF
+-- FONCTION: CLÔTURE DIRECTE (pour déchets)
 -- ============================================
 CREATE OR REPLACE FUNCTION close_claim_by_leader(
-    p_claim_id UUID
-) 
-RETURNS BOOLEAN
-LANGUAGE plpgsql
-AS $$
+    p_claim_id UUID,
+    p_leader_id UUID
+) RETURNS BOOLEAN AS $$
 DECLARE
     v_service_type service_type;
+    v_is_leader BOOLEAN;
     v_current_status claim_status;
-    v_leader_name VARCHAR(255);
 BEGIN
     -- Récupérer le type de service et le statut actuel
     SELECT service_type, status 
@@ -735,26 +722,25 @@ BEGIN
     FROM claims
     WHERE id = p_claim_id;
     
-    -- Vérifier que la réclamation existe
-    IF NOT FOUND THEN
-        RAISE EXCEPTION 'Réclamation introuvable';
-    END IF;
-    
     -- Vérifier que c'est une réclamation de déchets
     IF v_service_type != 'waste' THEN
         RAISE EXCEPTION 'Cette réclamation nécessite une validation superviseur';
     END IF;
     
-    -- Vérifier que le statut est 'resolved'
-    IF v_current_status != 'resolved' THEN
-        RAISE EXCEPTION 'La réclamation doit être résolue avant clôture';
+    -- Vérifier que l'employé est bien le leader
+    SELECT EXISTS(
+        SELECT 1
+        FROM team_members tm
+        JOIN intervention_teams it ON tm.team_id = it.id
+        WHERE it.claim_id = p_claim_id
+          AND tm.employee_id = p_leader_id
+          AND tm.is_leader = true
+    ) INTO v_is_leader;
+    
+    IF NOT v_is_leader THEN
+        RAISE EXCEPTION 'Cet employé n''est pas le chef d''équipe de cette réclamation';
     END IF;
     
-    -- Vérifier que l'employé est bien le leader
-   
-    
-    -- Récupérer le nom du leader
-   
     -- Clôturer directement
     UPDATE claims
     SET status = 'closed',
@@ -766,27 +752,33 @@ BEGIN
         claim_id,
         action_type,
         action_description,
+        performed_by,
+        performed_by_type,
+        performed_by_name,
         previous_status,
         new_status
-    ) VALUES (
+    )
+    SELECT 
         p_claim_id,
         'direct_closure',
         'Clôture directe par le chef d''équipe',
+        p_leader_id::TEXT,
+        'employee',
+        e.full_name,
         v_current_status,
         'closed'
-    );
+    FROM employees e
+    WHERE e.id = p_leader_id;
     
     RETURN true;
 END;
-$$;
-
+$$ LANGUAGE plpgsql;
 -- ============================================
 -- VUE: RÉCLAMATIONS AVEC DÉTAILS
 -- ============================================
 CREATE VIEW claims_detailed AS
 SELECT 
     c.id,
-    c.portal_claim_id,
     c.claim_number,
     c.internal_ticket_number,
     c.service_type,
@@ -795,33 +787,14 @@ SELECT
     c.status,
     c.priority,
     c.location_address,
-    c.location_lat,
-    c.location_lng,
     c.intervention_scheduled_date,
-    c.requires_supervisor_validation,
-    
-    -- Informations utilisateur
-    c.user_email,
-    c.user_name,
-    c.user_phone,
-    
-    -- Résolution
-    c.resolution_description,
-    c.resolution_submitted_at,
-    
-    -- Timestamps
     c.created_at,
     c.team_assigned_at,
     c.resolved_at,
-    c.updated_at,
     
     -- Chef d'équipe
     e.full_name as team_leader_name,
     e.email as team_leader_email,
-    
-    -- Superviseur
-    sup.full_name as supervisor_name,
-    sup.email as supervisor_email,
     
     -- Compteurs
     (SELECT COUNT(*) FROM team_members tm 
@@ -835,9 +808,7 @@ SELECT
      WHERE cp.claim_id = c.id AND cp.file_type = 'resolution') as resolution_photos_count
     
 FROM claims c
-LEFT JOIN employees e ON c.team_leader_id = e.id
-LEFT JOIN intervention_teams it ON it.claim_id = c.id
-LEFT JOIN employees sup ON it.team_supervisor_id = sup.id;
+LEFT JOIN employees e ON c.team_leader_id = e.id;
 
 -- ============================================
 -- VUE: STATISTIQUES EMPLOYÉS

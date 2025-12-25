@@ -43,40 +43,41 @@ model claim_photos {
 }
 
 model claims {
-  id                          String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  portal_claim_id             String                @unique @db.Uuid
-  claim_number                String                @db.VarChar(20)
-  service_type                service_type
-  user_id                     String                @db.VarChar(255)
-  user_email                  String                @db.VarChar(255)
-  user_name                   String?               @db.VarChar(255)
-  user_phone                  String?               @db.VarChar(50)
-  title                       String                @db.VarChar(500)
-  description                 String
-  location_address            String
-  location_lat                Decimal               @db.Decimal(10, 8)
-  location_lng                Decimal               @db.Decimal(11, 8)
-  priority                    priority_level        @default(medium)
-  estimated_resolution_hours  Int?
-  intervention_scheduled_date DateTime?             @db.Date
-  service_specific_data       Json?                 @default("{}")
-  status                      claim_status?         @default(received)
-  assigned_team_id            String?               @db.Uuid
-  team_leader_id              String?               @db.Uuid
-  internal_ticket_number      String?               @unique @db.VarChar(50)
-  resolution_description      String?
-  resolution_submitted_at     DateTime?             @db.Timestamptz(6)
-  resolution_submitted_by     String?               @db.Uuid
-  created_at                  DateTime?             @default(now()) @db.Timestamptz(6)
-  updated_at                  DateTime?             @default(now()) @db.Timestamptz(6)
-  team_assigned_at            DateTime?             @db.Timestamptz(6)
-  resolved_at                 DateTime?             @db.Timestamptz(6)
-  last_kafka_message_id       String?               @db.VarChar(255)
-  claim_actions               claim_actions[]
-  claim_photos                claim_photos[]
-  email_notifications         email_notifications[]
-  intervention_teams          intervention_teams?
-  kafka_messages_log          kafka_messages_log[]
+  id                             String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  portal_claim_id                String                @unique @db.Uuid
+  claim_number                   String                @db.VarChar(20)
+  service_type                   service_type
+  user_id                        String                @db.VarChar(255)
+  user_email                     String                @db.VarChar(255)
+  user_name                      String?               @db.VarChar(255)
+  user_phone                     String?               @db.VarChar(50)
+  title                          String                @db.VarChar(500)
+  description                    String
+  location_address               String
+  location_lat                   Decimal               @db.Decimal(10, 8)
+  location_lng                   Decimal               @db.Decimal(11, 8)
+  priority                       priority_level        @default(medium)
+  estimated_resolution_hours     Int?
+  intervention_scheduled_date    DateTime?             @db.Date
+  service_specific_data          Json?                 @default("{}")
+  status                         claim_status?         @default(received)
+  assigned_team_id               String?               @db.Uuid
+  team_leader_id                 String?               @db.Uuid
+  internal_ticket_number         String?               @unique @db.VarChar(50)
+  resolution_description         String?
+  resolution_submitted_at        DateTime?             @db.Timestamptz(6)
+  resolution_submitted_by        String?               @db.Uuid
+  created_at                     DateTime?             @default(now()) @db.Timestamptz(6)
+  updated_at                     DateTime?             @default(now()) @db.Timestamptz(6)
+  team_assigned_at               DateTime?             @db.Timestamptz(6)
+  resolved_at                    DateTime?             @db.Timestamptz(6)
+  last_kafka_message_id          String?               @db.VarChar(255)
+  requires_supervisor_validation Boolean?              @default(false)
+  claim_actions                  claim_actions[]
+  claim_photos                   claim_photos[]
+  email_notifications            email_notifications[]
+  intervention_teams             intervention_teams?
+  kafka_messages_log             kafka_messages_log[]
 
   @@index([created_at(sort: Desc)], map: "idx_claims_created_at")
   @@index([internal_ticket_number], map: "idx_claims_internal_ticket")
@@ -110,21 +111,22 @@ model email_notifications {
 }
 
 model employees {
-  id                    String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  employee_number       String               @unique @db.VarChar(50)
-  clerk_user_id         String?              @unique @db.VarChar(255)
-  full_name             String               @db.VarChar(255)
-  email                 String               @unique @db.VarChar(255)
-  phone                 String?              @db.VarChar(50)
-  service_type          service_type
-  status                employee_status?     @default(available)
-  total_interventions   Int?                 @default(0)
-  current_active_claims Int?                 @default(0)
-  is_active             Boolean?             @default(true)
-  created_at            DateTime?            @default(now()) @db.Timestamptz(6)
-  updated_at            DateTime?            @default(now()) @db.Timestamptz(6)
-  intervention_teams    intervention_teams[]
-  team_members          team_members[]
+  id                                                                  String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employee_number                                                     String               @unique @db.VarChar(50)
+  clerk_user_id                                                       String?              @unique @db.VarChar(255)
+  full_name                                                           String               @db.VarChar(255)
+  email                                                               String               @unique @db.VarChar(255)
+  phone                                                               String?              @db.VarChar(50)
+  service_type                                                        service_type
+  status                                                              employee_status?     @default(available)
+  total_interventions                                                 Int?                 @default(0)
+  current_active_claims                                               Int?                 @default(0)
+  is_active                                                           Boolean?             @default(true)
+  created_at                                                          DateTime?            @default(now()) @db.Timestamptz(6)
+  updated_at                                                          DateTime?            @default(now()) @db.Timestamptz(6)
+  intervention_teams_intervention_teams_team_leader_idToemployees     intervention_teams[] @relation("intervention_teams_team_leader_idToemployees")
+  intervention_teams_intervention_teams_team_supervisor_idToemployees intervention_teams[] @relation("intervention_teams_team_supervisor_idToemployees")
+  team_members                                                        team_members[]
 
   @@index([service_type], map: "idx_employees_service")
   @@index([service_type, status], map: "idx_employees_service_status")
@@ -132,19 +134,21 @@ model employees {
 }
 
 model intervention_teams {
-  id                          String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  claim_id                    String                @unique @db.Uuid
-  service_type                service_type
-  team_leader_id              String                @db.Uuid
-  resolution_token            String                @unique @db.VarChar(255)
-  resolution_token_expires_at DateTime?             @db.Timestamptz(6)
-  is_active                   Boolean?              @default(true)
-  created_at                  DateTime?             @default(now()) @db.Timestamptz(6)
-  completed_at                DateTime?             @db.Timestamptz(6)
-  email_notifications         email_notifications[]
-  claims                      claims                @relation(fields: [claim_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  employees                   employees             @relation(fields: [team_leader_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  team_members                team_members[]
+  id                                                         String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  claim_id                                                   String                @unique @db.Uuid
+  service_type                                               service_type
+  team_leader_id                                             String                @db.Uuid
+  resolution_token                                           String                @unique @db.VarChar(255)
+  resolution_token_expires_at                                DateTime?             @db.Timestamptz(6)
+  is_active                                                  Boolean?              @default(true)
+  created_at                                                 DateTime?             @default(now()) @db.Timestamptz(6)
+  completed_at                                               DateTime?             @db.Timestamptz(6)
+  team_supervisor_id                                         String?               @db.Uuid
+  email_notifications                                        email_notifications[]
+  claims                                                     claims                @relation(fields: [claim_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  employees_intervention_teams_team_leader_idToemployees     employees             @relation("intervention_teams_team_leader_idToemployees", fields: [team_leader_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  employees_intervention_teams_team_supervisor_idToemployees employees?            @relation("intervention_teams_team_supervisor_idToemployees", fields: [team_supervisor_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  team_members                                               team_members[]
 
   @@index([claim_id], map: "idx_teams_claim")
   @@index([team_leader_id], map: "idx_teams_leader")
@@ -177,6 +181,7 @@ model team_members {
   notification_sent    Boolean?           @default(false)
   notification_sent_at DateTime?          @db.Timestamptz(6)
   created_at           DateTime?          @default(now()) @db.Timestamptz(6)
+  is_supervisor        Boolean?           @default(false)
   employees            employees          @relation(fields: [employee_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   intervention_teams   intervention_teams @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
