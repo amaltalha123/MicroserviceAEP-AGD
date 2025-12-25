@@ -12,9 +12,6 @@ model claim_actions {
   claim_id           String        @db.Uuid
   action_type        String        @db.VarChar(100)
   action_description String
-  performed_by       String?       @db.VarChar(255)
-  performed_by_type  String?       @db.VarChar(20)
-  performed_by_name  String?       @db.VarChar(255)
   previous_status    claim_status?
   new_status         claim_status?
   action_data        Json?         @default("{}")
@@ -39,9 +36,10 @@ model claim_photos {
   claims           claims    @relation(fields: [claim_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([claim_id], map: "idx_photos_claim")
-  @@index([file_type], map: "iidx_photos_type")
+  @@index([file_type], map: "idx_photos_type")
 }
 
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model claims {
   id                             String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   portal_claim_id                String                @unique @db.Uuid
@@ -61,7 +59,6 @@ model claims {
   intervention_scheduled_date    DateTime?             @db.Date
   service_specific_data          Json?                 @default("{}")
   status                         claim_status?         @default(received)
-  assigned_team_id               String?               @db.Uuid
   team_leader_id                 String?               @db.Uuid
   internal_ticket_number         String?               @unique @db.VarChar(50)
   resolution_description         String?
@@ -138,12 +135,12 @@ model intervention_teams {
   claim_id                                                   String                @unique @db.Uuid
   service_type                                               service_type
   team_leader_id                                             String                @db.Uuid
+  team_supervisor_id                                         String?               @db.Uuid
   resolution_token                                           String                @unique @db.VarChar(255)
   resolution_token_expires_at                                DateTime?             @db.Timestamptz(6)
   is_active                                                  Boolean?              @default(true)
   created_at                                                 DateTime?             @default(now()) @db.Timestamptz(6)
   completed_at                                               DateTime?             @db.Timestamptz(6)
-  team_supervisor_id                                         String?               @db.Uuid
   email_notifications                                        email_notifications[]
   claims                                                     claims                @relation(fields: [claim_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   employees_intervention_teams_team_leader_idToemployees     employees             @relation("intervention_teams_team_leader_idToemployees", fields: [team_leader_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -178,10 +175,10 @@ model team_members {
   team_id              String             @db.Uuid
   employee_id          String             @db.Uuid
   is_leader            Boolean?           @default(false)
+  is_supervisor        Boolean?           @default(false)
   notification_sent    Boolean?           @default(false)
   notification_sent_at DateTime?          @db.Timestamptz(6)
   created_at           DateTime?          @default(now()) @db.Timestamptz(6)
-  is_supervisor        Boolean?           @default(false)
   employees            employees          @relation(fields: [employee_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   intervention_teams   intervention_teams @relation(fields: [team_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
