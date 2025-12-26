@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
+import EntryPage from './EntryPage';
 import { 
   Search, 
   Filter, 
@@ -17,50 +18,8 @@ import { fr } from 'date-fns/locale';
 
 const Claims = () => {
   const navigate = useNavigate();
-  const [claims, setClaims] = useState([
-    {
-      id: '1',
-      claimNumber: 'CLM-2024-00123',
-      internalTicket: 'LGT-2024-00045',
-      title: 'Lampadaire éteint Rue Mohammed V',
-      qualification: 'Lampadaire éteint',
-      priority: 'urgent',
-      service: 'lighting',
-      status: 'team_assigned',
-      location: 'Rue Mohammed V, Marrakech',
-      createdAt: new Date('2024-12-14T10:30:00'),
-      scheduledDate: new Date('2024-12-14'),
-      teamLeader: 'Ahmed Alami',
-    },
-    {
-      id: '2',
-      claimNumber: 'CLM-2024-00124',
-      internalTicket: 'WST-2024-00032',
-      title: 'Bac à déchets débordement',
-      qualification: 'Bac à déchets plein',
-      priority: 'high',
-      service: 'waste',
-      status: 'in_progress',
-      location: 'Avenue Hassan II, Marrakech',
-      createdAt: new Date('2024-12-14T09:15:00'),
-      scheduledDate: new Date('2024-12-15'),
-      teamLeader: 'Mohammed Fassi',
-    },
-    {
-      id: '3',
-      claimNumber: 'CLM-2024-00125',
-      internalTicket: 'LGT-2024-00046',
-      title: 'Éclairage faible',
-      qualification: 'Éclairage faible ou clignotant',
-      priority: 'medium',
-      service: 'lighting',
-      status: 'received',
-      location: 'Boulevard Zerktouni, Marrakech',
-      createdAt: new Date('2024-12-14T08:00:00'),
-      scheduledDate: new Date('2024-12-17'),
-      teamLeader: null,
-    },
-  ]);
+  const [claims, setClaims] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const [filters, setFilters] = useState({
     search: '',
@@ -68,6 +27,62 @@ const Claims = () => {
     status: 'all',
     priority: 'all',
   });
+
+  useEffect(() => {
+    const fetchClaims = async () => {
+      try {
+        setLoading(true);
+        //const clerkUser = EntryPage();
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL}/api/user/get-user-claims`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              userId: "user_mock_123", // ID Clerk de l’utilisateur connecté
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error('Erreur API claims');
+        }
+
+        const result = await response.json();
+        console.log('Réclamations chargées :', result.data);
+        const mappedClaims = result.data.map((c) => ({
+          id: c.id,
+          claimNumber: c.claimNumber ?? '',
+          internalTicket: c.internalTicket ?? '',
+          title: c.title ?? '',
+          priority: c.priority ?? 'medium',
+
+          // 🔥 CORRECTION ICI : Utiliser 'service' comme retourné par l'API backend
+          service: c.service ?? '',
+
+          status: c.status,
+          location: c.location ?? '',
+          createdAt: new Date(c.createdAt),
+          scheduledDate: c.scheduledDate
+            ? new Date(c.scheduledDate)
+            : null,
+          teamLeader: c.teamLeader ?? null,
+        }));
+
+        setClaims(mappedClaims);
+      } catch (error) {
+        console.error('Erreur chargement des réclamations:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (true) {
+      fetchClaims();
+    }
+  }, ["user_mock_123"]);
 
   const [showFilters, setShowFilters] = useState(false);
 
@@ -99,6 +114,7 @@ const Claims = () => {
       in_progress: 'En cours',
       resolved: 'Résolue',
       rejected: 'Rejetée',
+      closed: 'Fermée',
     };
     return labels[status] || status;
   };
@@ -113,15 +129,32 @@ const Claims = () => {
     return labels[priority] || priority;
   };
 
+  // 🔥 AJOUT : Fonction pour obtenir le label du service (nom affiché)
+  const getServiceLabel = (service) => {
+    const labels = {
+      lighting: 'Éclairage Public',
+      waste: 'Déchets',
+    };
+    return labels[service] || 'Service inconnu';
+  };
+
   const filteredClaims = claims.filter((claim) => {
-    const matchSearch = 
-      claim.claimNumber.toLowerCase().includes(filters.search.toLowerCase()) ||
-      claim.title.toLowerCase().includes(filters.search.toLowerCase()) ||
-      claim.location.toLowerCase().includes(filters.search.toLowerCase());
-    
-    const matchService = filters.service === 'all' || claim.service === filters.service;
-    const matchStatus = filters.status === 'all' || claim.status === filters.status;
-    const matchPriority = filters.priority === 'all' || claim.priority === filters.priority;
+    const search = filters.search.toLowerCase();
+
+    const matchSearch =
+      (claim.claimNumber ?? '').toLowerCase().includes(search) ||
+      (claim.title ?? '').toLowerCase().includes(search) ||
+      (claim.location ?? '').toLowerCase().includes(search);
+
+    // 🔥 CORRECTION ICI : Utiliser 'claim.service' au lieu de 'claim.serviceType'
+    const matchService =
+      filters.service === 'all' || claim.service === filters.service;
+
+    const matchStatus =
+      filters.status === 'all' || claim.status === filters.status;
+
+    const matchPriority =
+      filters.priority === 'all' || claim.priority === filters.priority;
 
     return matchSearch && matchService && matchStatus && matchPriority;
   });
@@ -129,6 +162,14 @@ const Claims = () => {
   const handleViewDetails = (claimId) => {
     navigate(`/claims/${claimId}`);
   };
+
+  if (loading) {
+    return (
+      <Layout title="Réclamations">
+        <p className="text-gray-500">Chargement des réclamations...</p>
+      </Layout>
+    );
+  }
 
   return (
     <Layout 
@@ -164,10 +205,6 @@ const Claims = () => {
           </button>
 
           {/* Bouton export */}
-          <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-gray-700">
-            <Download className="w-5 h-5" />
-            <span>Export CSV</span>
-          </button>
         </div>
 
         {/* Filtres dépliables */}
@@ -202,6 +239,7 @@ const Claims = () => {
                 <option value="team_assigned">Équipe assignée</option>
                 <option value="in_progress">En cours</option>
                 <option value="resolved">Résolue</option>
+                <option value="closed">Fermée</option>
               </select>
             </div>
 
@@ -237,9 +275,7 @@ const Claims = () => {
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   Service
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                  Qualification
-                </th>
+                
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   Statut
                 </th>
@@ -269,29 +305,19 @@ const Claims = () => {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
-                      {claim.service === 'lighting' ? (
+                      {claim.service === "lighting" ? (
                         <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
                           <Lightbulb className="w-4 h-4 text-yellow-600" />
                         </div>
-                      ) : (
+                      ) : claim.service === "waste" ? (
                         <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
                           <Trash2 className="w-4 h-4 text-green-600" />
                         </div>
-                      )}
-                      <span className="text-sm text-gray-600">
-                        {claim.service === 'lighting' ? 'Éclairage' : 'Déchets'}
-                      </span>
+                      ) : null}
+                      <span className="text-sm text-gray-700">{getServiceLabel(claim.service)}</span>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{claim.title}</p>
-                      <div className="flex items-center gap-1 mt-1 text-xs text-gray-500">
-                        <MapPin className="w-3 h-3" />
-                        <span>{claim.location}</span>
-                      </div>
-                    </div>
-                  </td>
+                  
                   <td className="px-6 py-4">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusBadge(claim.status)}`}>
                       {getStatusLabel(claim.status)}
@@ -305,7 +331,9 @@ const Claims = () => {
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-1 text-sm text-gray-600">
                       <Calendar className="w-4 h-4" />
-                      <span>{format(claim.createdAt, 'dd/MM/yyyy', { locale: fr })}</span>
+                      <span>
+                        {format(claim.createdAt, 'dd/MM/yyyy', { locale: fr })}
+                      </span>
                     </div>
                   </td>
                   <td className="px-6 py-4">
@@ -327,7 +355,7 @@ const Claims = () => {
         </div>
 
         {/* Pagination */}
-        <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+        {/* <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
           <p className="text-sm text-gray-600">
             Affichage de <span className="font-medium">{filteredClaims.length}</span> réclamation(s)
           </p>
@@ -345,7 +373,7 @@ const Claims = () => {
               Suivant
             </button>
           </div>
-        </div>
+        </div> */}
       </div>
     </Layout>
   );

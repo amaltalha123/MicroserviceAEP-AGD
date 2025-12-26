@@ -31,16 +31,9 @@ const ClaimDetail = () => {
     internalTicket: 'LGT-2024-00045',
     title: 'Lampadaire éteint Rue Mohammed V',
     description: 'Le lampadaire ne fonctionne plus depuis 3 jours. C\'est dangereux la nuit car c\'est une zone de passage piéton.',
-    qualification: 'Lampadaire éteint',
     priority: 'urgent',
     service: 'lighting',
     status: 'in_progress',
-    user: {
-      id: 'user_123',
-      name: 'Mohammed Test',
-      email: 'mohammed.test@email.com',
-      phone: '+212 600 123 456',
-    },
     location: {
       address: 'Rue Mohammed V, Marrakech',
       lat: 31.6295,
@@ -53,18 +46,19 @@ const ClaimDetail = () => {
         name: 'Ahmed Alami',
         email: 'ahmed.alami@smartcity.ma',
       },
+      //Only members when it is lighting service
+      Supervisor: {
+        id: 'sup_1',
+        name: 'Ahmed Alami',
+        email: 'ahmed.alami@smartcity.ma',
+      },
       members: [
         { id: 'emp_2', name: 'Fatima Benali', isLeader: false },
         { id: 'emp_3', name: 'Youssef Tazi', isLeader: false },
       ],
     },
-    photos: {
-      initial: [
-        'https://images.unsplash.com/photo-1509515837298-2c67a3933321?w=400',
-        'https://images.unsplash.com/photo-1513828583688-c52646db42da?w=400',
-      ],
-      resolution: [],
-    },
+    
+    
     timeline: [
       {
         id: 1,
@@ -181,55 +175,7 @@ const ClaimDetail = () => {
             </div>
           </div>
 
-          {/* Localisation */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <MapPin className="w-5 h-5" />
-              Localisation
-            </h3>
-            <p className="text-gray-700 mb-4">{claim.location.address}</p>
-            <p className="text-sm text-gray-500 mb-4">
-              Coordonnées: {claim.location.lat}, {claim.location.lng}
-            </p>
-            
-            {/* Carte - placeholder */}
-            <div className="aspect-video bg-gray-100 rounded-lg flex items-center justify-center">
-              <div className="text-center text-gray-500">
-                <MapPin className="w-12 h-12 mx-auto mb-2" />
-                <p className="text-sm">Carte à intégrer (Google Maps / Leaflet)</p>
-              </div>
-            </div>
-
-            <a
-              href={`https://www.google.com/maps?q=${claim.location.lat},${claim.location.lng}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-4 inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 text-sm font-medium"
-            >
-              Ouvrir dans Google Maps
-              <ExternalLink className="w-4 h-4" />
-            </a>
-          </div>
-
-          {/* Photos initiales */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <ImageIcon className="w-5 h-5" />
-              Photos initiales (Citoyen)
-            </h3>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {claim.photos.initial.map((photo, index) => (
-                <div key={index} className="aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity">
-                  <img
-                    src={photo}
-                    alt={`Photo ${index + 1}`}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              ))}
-            </div>
-          </div>
-
+          
           {/* Timeline */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
@@ -266,7 +212,7 @@ const ClaimDetail = () => {
         {/* Colonne sidebar */}
         <div className="space-y-6">
           {/* Informations citoyen */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          {/* <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <User className="w-5 h-5" />
               Citoyen
@@ -291,7 +237,7 @@ const ClaimDetail = () => {
                 </a>
               </div>
             </div>
-          </div>
+          </div> */}
 
           {/* Équipe assignée */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -328,7 +274,7 @@ const ClaimDetail = () => {
           </div>
 
           {/* Actions rapides */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          {/* <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Actions</h3>
             <div className="space-y-2">
               <button className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
@@ -340,7 +286,7 @@ const ClaimDetail = () => {
                 Contacter le citoyen
               </button>
             </div>
-          </div>
+          </div> */}
         </div>
       </div>
     </Layout>

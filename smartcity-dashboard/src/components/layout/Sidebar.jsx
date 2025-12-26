@@ -14,31 +14,13 @@ const Sidebar = () => {
   const location = useLocation();
 
   const menuItems = [
-    {
-      name: 'Dashboard',
-      path: '/',
-      icon: LayoutDashboard,
-    },
+    
     {
       name: 'Réclamations',
       path: '/claims',
       icon: FileText,
     },
-    {
-      name: 'Équipes',
-      path: '/teams',
-      icon: Users,
-    },
-    {
-      name: 'Employés',
-      path: '/employees',
-      icon: UserCog,
-    },
-    {
-      name: 'Statistiques',
-      path: '/statistics',
-      icon: BarChart3,
-    },
+   
   ];
 
   const isActive = (path) => {
@@ -90,11 +72,11 @@ const Sidebar = () => {
       <div className="p-4 border-t border-gray-200">
         <div className="flex items-center gap-3 px-4 py-3">
           <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-            <span className="text-blue-600 font-semibold">AD</span>
+            <span className="text-blue-600 font-semibold">CT</span>
           </div>
           <div className="flex-1">
-            <p className="text-sm font-medium text-gray-900">Admin</p>
-            <p className="text-xs text-gray-500">Superviseur</p>
+            <p className="text-sm font-medium text-gray-900">Citoyen</p>
+            <p className="text-xs text-gray-500">client</p>
           </div>
         </div>
       </div>

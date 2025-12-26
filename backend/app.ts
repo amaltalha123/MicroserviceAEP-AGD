@@ -3,7 +3,8 @@ import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
 import kafkaTestRoutes from './src/api/kafka-test.routes';
-import testRoutes from './src/api/test.routes';
+import UserGetClaimRoutes from './src/api/getUserClaims.routes';
+
 import { startKafkaConsumer } from './src/kafka/consumer'; 
 import teamRoutes from "./src/api/team.routes";
 import supervisorRoutes from "./src/api/supervisor.routes";
@@ -36,6 +37,8 @@ app.use(express.urlencoded({ extended: true }));
 
 
 app.use('/api/kafka', kafkaTestRoutes);
+app.use('/api/user', UserGetClaimRoutes);
+
 app.post("/api/sso/verify", async (req, res) => {
   try {
     const { token } = req.body;
@@ -64,8 +67,7 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// ← AJOUTEZ CETTE LIGNE
-app.use('/api/test', testRoutes);
+
 
 // Routes à ajouter plus tard
 // app.use('/api/claims', claimsRoutes);

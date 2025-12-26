@@ -9,6 +9,7 @@
 // ENUMS
 // ============================================
 
+
 export enum MessageType {
   CLAIM_CREATED = 'CLAIM_CREATED',
   CLAIM_UPDATED = 'CLAIM_UPDATED',
@@ -119,7 +120,19 @@ export interface Attachment {
   mimeType: string;
   uploadedAt: string;
 }
-
+export interface ClaimResponse {
+  id: string;
+  claimNumber: string;
+  internalTicket: string | null;
+  title: string;
+  priority: string;
+  service: string;
+  status: string | null;
+  location: string;
+  createdAt: Date | null;
+  scheduledDate: Date | null;
+  teamLeader: string | null;
+}
 // ============================================
 // INTERFACES - MESSAGES SORTANTS (TO PORTAL)
 // ============================================

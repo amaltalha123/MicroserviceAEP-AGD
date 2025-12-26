@@ -938,3 +938,19 @@ INSERT INTO employees (employee_number, full_name, email, phone, service_type) V
     ('EMP-WST-003', 'Omar Kettani', 'omar.kettani@smartcity.ma', '+212600888888', 'waste'),
     ('EMP-WST-004', 'Zineb Lazrak', 'zineb.lazrak@smartcity.ma', '+212600999999', 'waste'),
     ('EMP-WST-005', 'Amine Berrada', 'amine.berrada@smartcity.ma', '+212600000000', 'waste');
+
+    INSERT INTO employees (employee_number, full_name, email, phone, service_type) VALUES
+
+    -- Éclairage (lighting)
+    ('EMP-LGT-006', 'Hicham El Kordi', 'hicham.elkordi@smartcity.ma', '+212601111111', 'lighting'),
+    ('EMP-LGT-007', 'Meriem Azzouzi', 'meriem.azzouzi@smartcity.ma', '+212601222222', 'lighting'),
+    ('EMP-LGT-008', 'Ayoub El Harrak', 'ayoub.elharrak@smartcity.ma', '+212601333333', 'lighting'),
+    ('EMP-LGT-009', 'Sanaa El Fassi', 'sanaa.elfassi@smartcity.ma', '+212601444444', 'lighting'),
+    ('EMP-LGT-010', 'Nabil Chafik', 'nabil.chafik@smartcity.ma', '+212601555555', 'lighting'),
+
+    -- Déchets (waste)
+    ('EMP-WST-006', 'Yassir Moutaouakil', 'yassir.moutaouakil@smartcity.ma', '+212602111111', 'waste'),
+    ('EMP-WST-007', 'Kawtar El Kabbaj', 'kawtar.elkabbaj@smartcity.ma', '+212602222222', 'waste'),
+    ('EMP-WST-008', 'Ismail Ait Omar', 'ismail.aitomar@smartcity.ma', '+212602333333', 'waste'),
+    ('EMP-WST-009', 'Hajar Benabdeljalil', 'hajar.benabdeljalil@smartcity.ma', '+212602444444', 'waste'),
+    ('EMP-WST-010', 'Oussama Lahrichi', 'oussama.lahrichi@smartcity.ma', '+212602555555', 'waste');
