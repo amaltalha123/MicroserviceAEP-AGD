@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { KafkaSimulator } from '../kafka/mock/kafka-simulator';
-import { sendClaimCreated } from '../kafka/producer';
+import { sendClaimCreated } from '../kafka/producerAEP';
 
 const router = Router();
 

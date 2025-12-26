@@ -5,13 +5,6 @@ import {
   PriorityLevel
 } from '../../types/kafka.types';
 
-type QualificationType = 
-  | 'bac_plein'
-  | 'debordement_sanitaire'
-  | 'depot_sauvage'
-  | 'lampadaire_eteint'
-  | 'situation_dangereuse'
-  | 'eclairage_faible';
 
 export class KafkaSimulator {
     
@@ -21,22 +14,6 @@ export class KafkaSimulator {
   static generateMockClaimMessage(): ClaimPayload {
     const isLighting = Math.random() > 0.5;
     
-    // Qualifications pour l'éclairage
-    const lightingQualifications: QualificationType[] = [
-      'lampadaire_eteint',
-      'situation_dangereuse',
-      'eclairage_faible',
-    ];
-    
-    // Qualifications pour les déchets
-    const wasteQualifications: QualificationType[] = [
-      'bac_plein',
-      'debordement_sanitaire',
-      'depot_sauvage',
-    ];
-    
-    const qualifications = isLighting ? lightingQualifications : wasteQualifications;
-    const qualification = qualifications[Math.floor(Math.random() * qualifications.length)];
     return {
       messageId: crypto.randomUUID(),
       messageType: MessageType.CLAIM_CREATED,
@@ -51,10 +28,10 @@ export class KafkaSimulator {
         phone: '+212600123456',
       },
       claim: {
-        serviceType: ServiceType.LIGHTING,
-        title: 'Test de réclamation',
-        description: 'Ceci est une réclamation de test',
-        priority: PriorityLevel.HIGH,
+        serviceType: ServiceType.WASTE,
+        title: 'Test de réclamation waste',
+        description: 'Ceci est une réclamation de test de waste',
+        priority: PriorityLevel.MEDIUM,
         location: {
           address: 'Rue Mohammed V, Marrakech',
           latitude: 31.6295,
@@ -62,7 +39,7 @@ export class KafkaSimulator {
         },
         attachments: [],
        extraData: {
-          qualification, // ← Chaîne de caractères simple
+          
         },
       },
       correlationId: crypto.randomUUID(),

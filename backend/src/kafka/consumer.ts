@@ -1,5 +1,5 @@
 import { kafkaConsumer } from '../config/kafka';
-import { ClaimsService } from '../modules/claims/claims.service';
+import { ClaimsService } from '../modules/claims/claimsConsumerProducer.service';
 
 const claimsService = new ClaimsService();
 
@@ -20,6 +20,12 @@ export async function startKafkaConsumer() {
 
         console.log(`📥 Message reçu (${topic})`, payload.claimNumber);
 
+        // ✅ FILTRE : Ne traiter QUE les messages CLAIM_CREATED
+        if (payload.messageType !== 'CLAIM_CREATED') {
+          console.log(`⏭️ Message ignoré (type: ${payload.messageType})`);
+          return;
+        }
+
         await claimsService.createClaimFromKafka(payload);
 
         console.log('✅ Réclamation enregistrée en DB');
@@ -29,3 +35,10 @@ export async function startKafkaConsumer() {
     },
   });
 }
+
+// Gestion gracieuse de l'arrêt
+process.on('SIGTERM', async () => {
+  console.log('🛑 Arrêt du consumer Kafka...');
+  await kafkaConsumer.disconnect();
+  process.exit(0);
+});
