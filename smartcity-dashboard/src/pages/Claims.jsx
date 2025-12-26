@@ -1,8 +1,8 @@
 // src/pages/Claims.jsx
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import Layout from '../components/layout/Layout';
-import EntryPage from './EntryPage';
+
 import { 
   Search, 
   Filter, 
@@ -17,7 +17,11 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 const Claims = () => {
+  const [params] = useSearchParams();
   const navigate = useNavigate();
+
+  const [userInfo, setUserInfo] = useState(null);
+  const [errorMsg, setErrorMsg] = useState(""); // ✅ CORRECTION 1 : Garder cette ligne
   const [claims, setClaims] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -28,11 +32,58 @@ const Claims = () => {
     priority: 'all',
   });
 
+  const [showFilters, setShowFilters] = useState(false);
+
+  // ✅ Premier useEffect : Vérification du token SSO
+  useEffect(() => {
+    const token = params.get("token");
+
+    if (!token) {
+      setErrorMsg("Paramètres manquants (token).");
+      setLoading(false);
+      return;
+    }
+
+    (async () => {
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/sso/verify`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token }),
+        });
+
+        if (!res.ok) {
+          const errorData = await res.json();
+          console.error("Erreur SSO:", errorData);
+          setErrorMsg("Token invalide ou expiré. Veuillez vous reconnecter.");
+          setLoading(false);
+          return;
+        }
+
+        const data = await res.json();
+        console.log("✅ SSO validé:", data);
+        
+        sessionStorage.setItem("B_TOKEN", token);
+        sessionStorage.setItem("B_USER", JSON.stringify(data));
+
+        setUserInfo(data);
+        setLoading(false);
+
+      } catch (e) {
+        console.error("Erreur réseau:", e);
+        setErrorMsg("Erreur réseau (backend non accessible).");
+        setLoading(false);
+      }
+    })();
+  }, [params]);
+
+  // ✅ Deuxième useEffect : Chargement des réclamations (uniquement quand userInfo existe)
   useEffect(() => {
     const fetchClaims = async () => {
       try {
         setLoading(true);
-        //const clerkUser = EntryPage();
+        console.log("📡 Chargement des réclamations pour userId:", userInfo?.userId);
+        
         const response = await fetch(
           `${import.meta.env.VITE_API_URL}/api/user/get-user-claims`,
           {
@@ -41,7 +92,7 @@ const Claims = () => {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              userId: "user_mock_123", // ID Clerk de l’utilisateur connecté
+              userId: userInfo?.userId,
             }),
           }
         );
@@ -51,40 +102,36 @@ const Claims = () => {
         }
 
         const result = await response.json();
-        console.log('Réclamations chargées :', result.data);
+        console.log('✅ Réclamations chargées:', result.data);
+        
         const mappedClaims = result.data.map((c) => ({
           id: c.id,
           claimNumber: c.claimNumber ?? '',
           internalTicket: c.internalTicket ?? '',
           title: c.title ?? '',
           priority: c.priority ?? 'medium',
-
-          // 🔥 CORRECTION ICI : Utiliser 'service' comme retourné par l'API backend
           service: c.service ?? '',
-
           status: c.status,
           location: c.location ?? '',
           createdAt: new Date(c.createdAt),
-          scheduledDate: c.scheduledDate
-            ? new Date(c.scheduledDate)
-            : null,
+          scheduledDate: c.scheduledDate ? new Date(c.scheduledDate) : null,
           teamLeader: c.teamLeader ?? null,
         }));
 
         setClaims(mappedClaims);
       } catch (error) {
-        console.error('Erreur chargement des réclamations:', error);
+        console.error('❌ Erreur chargement des réclamations:', error);
+        setErrorMsg("Impossible de charger les réclamations.");
       } finally {
         setLoading(false);
       }
     };
 
-    if (true) {
+    // ✅ CORRECTION 2 : Ne charger que si userInfo et userId existent
+    if (userInfo?.userId) {
       fetchClaims();
     }
-  }, ["user_mock_123"]);
-
-  const [showFilters, setShowFilters] = useState(false);
+  }, [userInfo]);
 
   const getPriorityBadge = (priority) => {
     const badges = {
@@ -129,7 +176,6 @@ const Claims = () => {
     return labels[priority] || priority;
   };
 
-  // 🔥 AJOUT : Fonction pour obtenir le label du service (nom affiché)
   const getServiceLabel = (service) => {
     const labels = {
       lighting: 'Éclairage Public',
@@ -146,7 +192,6 @@ const Claims = () => {
       (claim.title ?? '').toLowerCase().includes(search) ||
       (claim.location ?? '').toLowerCase().includes(search);
 
-    // 🔥 CORRECTION ICI : Utiliser 'claim.service' au lieu de 'claim.serviceType'
     const matchService =
       filters.service === 'all' || claim.service === filters.service;
 
@@ -163,10 +208,32 @@ const Claims = () => {
     navigate(`/claims/${claimId}`);
   };
 
+  // ✅ CORRECTION 3 : Afficher un message d'erreur si nécessaire
+  if (errorMsg) {
+    return (
+      <Layout title="Erreur">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-red-800">{errorMsg}</p>
+          <button 
+            onClick={() => window.location.href = '/login'}
+            className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+          >
+            Retour à la connexion
+          </button>
+        </div>
+      </Layout>
+    );
+  }
+
   if (loading) {
     return (
       <Layout title="Réclamations">
-        <p className="text-gray-500">Chargement des réclamations...</p>
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-500">Chargement des réclamations...</p>
+          </div>
+        </div>
       </Layout>
     );
   }
@@ -203,8 +270,6 @@ const Claims = () => {
             <Filter className="w-5 h-5" />
             <span>Filtres</span>
           </button>
-
-          {/* Bouton export */}
         </div>
 
         {/* Filtres dépliables */}
@@ -275,7 +340,6 @@ const Claims = () => {
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   Service
                 </th>
-                
                 <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   Statut
                 </th>
@@ -291,89 +355,75 @@ const Claims = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {filteredClaims.map((claim) => (
-                <tr 
-                  key={claim.id} 
-                  className="hover:bg-gray-50 transition-colors cursor-pointer"
-                  onClick={() => handleViewDetails(claim.id)}
-                >
-                  <td className="px-6 py-4">
-                    <div>
-                      <p className="font-medium text-gray-900">{claim.claimNumber}</p>
-                      <p className="text-sm text-gray-500">{claim.internalTicket}</p>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      {claim.service === "lighting" ? (
-                        <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
-                          <Lightbulb className="w-4 h-4 text-yellow-600" />
-                        </div>
-                      ) : claim.service === "waste" ? (
-                        <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                          <Trash2 className="w-4 h-4 text-green-600" />
-                        </div>
-                      ) : null}
-                      <span className="text-sm text-gray-700">{getServiceLabel(claim.service)}</span>
-                    </div>
-                  </td>
-                  
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusBadge(claim.status)}`}>
-                      {getStatusLabel(claim.status)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getPriorityBadge(claim.priority)}`}>
-                      {getPriorityLabel(claim.priority)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-1 text-sm text-gray-600">
-                      <Calendar className="w-4 h-4" />
-                      <span>
-                        {format(claim.createdAt, 'dd/MM/yyyy', { locale: fr })}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleViewDetails(claim.id);
-                      }}
-                      className="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors"
-                    >
-                      <Eye className="w-4 h-4" />
-                      Voir
-                    </button>
+              {filteredClaims.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
+                    Aucune réclamation trouvée
                   </td>
                 </tr>
-              ))}
+              ) : (
+                filteredClaims.map((claim) => (
+                  <tr 
+                    key={claim.id} 
+                    className="hover:bg-gray-50 transition-colors cursor-pointer"
+                    onClick={() => handleViewDetails(claim.id)}
+                  >
+                    <td className="px-6 py-4">
+                      <div>
+                        <p className="font-medium text-gray-900">{claim.claimNumber}</p>
+                        <p className="text-sm text-gray-500">{claim.internalTicket}</p>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        {claim.service === "lighting" ? (
+                          <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
+                            <Lightbulb className="w-4 h-4 text-yellow-600" />
+                          </div>
+                        ) : claim.service === "waste" ? (
+                          <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                            <Trash2 className="w-4 h-4 text-green-600" />
+                          </div>
+                        ) : null}
+                        <span className="text-sm text-gray-700">{getServiceLabel(claim.service)}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusBadge(claim.status)}`}>
+                        {getStatusLabel(claim.status)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getPriorityBadge(claim.priority)}`}>
+                        {getPriorityLabel(claim.priority)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-1 text-sm text-gray-600">
+                        <Calendar className="w-4 h-4" />
+                        <span>
+                          {format(claim.createdAt, 'dd/MM/yyyy', { locale: fr })}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleViewDetails(claim.id);
+                        }}
+                        className="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors"
+                      >
+                        <Eye className="w-4 h-4" />
+                        Voir
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
-
-        {/* Pagination */}
-        {/* <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-          <p className="text-sm text-gray-600">
-            Affichage de <span className="font-medium">{filteredClaims.length}</span> réclamation(s)
-          </p>
-          <div className="flex items-center gap-2">
-            <button className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-              Précédent
-            </button>
-            <button className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg">
-              1
-            </button>
-            <button className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-              2
-            </button>
-            <button className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-              Suivant
-            </button>
-          </div>
-        </div> */}
       </div>
     </Layout>
   );
