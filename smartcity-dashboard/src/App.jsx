@@ -12,6 +12,8 @@ import Resolution from './pages/Resolution';
 
 import EntryPage from './pages/EntryPage';
 
+import TeamResolvePage from "./pages/TeamResolvePage.jsx";
+import SupervisorClosePage from "./pages/SupervisorClosePage.jsx";
 function App() {
   return (
     <BrowserRouter>
@@ -28,6 +30,11 @@ function App() {
         
         {/* Formulaire Résolution Mobile (Chef équipe) */}
         <Route path="/resolution/:token" element={<Resolution />} />
+
+
+{/* Formulaire Résolution supervisor plus leader final (Chef équipe) */}
+        <Route path="/team/resolve" element={<TeamResolvePage />} />
+        <Route path="/supervisor/close" element={<SupervisorClosePage />} />
       </Routes>
     </BrowserRouter>
   );

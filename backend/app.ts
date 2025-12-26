@@ -5,7 +5,8 @@ import dotenv from 'dotenv';
 import kafkaTestRoutes from './src/api/kafka-test.routes';
 import testRoutes from './src/api/test.routes';
 import { startKafkaConsumer } from './src/kafka/consumer'; 
-
+import teamRoutes from "./src/api/team.routes";
+import supervisorRoutes from "./src/api/supervisor.routes";
 //Démarrage du consumer Kafka
 async function bootstrap() {
   await startKafkaConsumer();
@@ -23,7 +24,12 @@ app.use(cors({ origin: process.env.CORS_ORIGIN }));
 
 // Middlewares
 app.use(helmet());
-app.use(cors());
+app.use(
+  cors({
+    origin: process.env.CORS_ORIGIN || "http://localhost:5173",
+    credentials: true,
+  })
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -65,9 +71,11 @@ app.use('/api/test', testRoutes);
 // app.use('/api/claims', claimsRoutes);
 // app.use('/api/employees', employeesRoutes);
 // app.use('/api/teams', teamsRoutes);
+app.use("/api/team", teamRoutes);
+app.use("/api/supervisor", supervisorRoutes);
 
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log(`Server running on http://localhost:${PORT}`);
 });
 
 export default app;
