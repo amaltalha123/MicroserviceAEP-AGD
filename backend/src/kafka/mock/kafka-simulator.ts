@@ -28,7 +28,7 @@ export class KafkaSimulator {
         phone: '+212600123456',
       },
       claim: {
-        serviceType: ServiceType.WASTE,
+        serviceType: ServiceType.LIGHTING,
         title: 'Test de réclamation waste',
         description: 'Ceci est une réclamation de test de waste',
         priority: PriorityLevel.MEDIUM,

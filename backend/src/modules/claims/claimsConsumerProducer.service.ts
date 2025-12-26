@@ -1,23 +1,25 @@
 import prisma from '../../config/database';
 import { ClaimPayload } from '../../types/kafka.types';
 import { sendStatusUpdate } from '../../kafka/statusUpdateProducer';
+import { TeamEmailDispatcher } from "../../services/email/teamEmailDispatcher.service"; 
+
 
 export class ClaimsService {
   async createClaimFromKafka(payload: ClaimPayload) {
     // ✅ VALIDATION DU PAYLOAD
     if (!payload || typeof payload !== 'object') {
-      console.error('❌ Payload invalide: pas un objet', payload);
+      console.error(' Payload invalide: pas un objet', payload);
       throw new Error('Payload invalide: format incorrect');
     }
 
     // Vérifier le type de message
     if (payload.messageType !== 'CLAIM_CREATED') {
-      console.warn('⚠️ Type de message non supporté:', payload.messageType);
+      console.warn(' Type de message non supporté:', payload.messageType);
       throw new Error(`Type de message non supporté: ${payload.messageType}`);
     }
 
     if (!payload.claim) {
-      console.error('❌ Payload invalide - structure claim manquante:', {
+      console.error(' Payload invalide - structure claim manquante:', {
         messageType: payload.messageType,
         hasClaimId: !!payload.claimId,
         keys: Object.keys(payload)
@@ -29,11 +31,11 @@ export class ClaimsService {
 
     // Vérifier que serviceType existe
     if (!claim.serviceType) {
-      console.error('❌ serviceType manquant dans le payload:', payload);
+      console.error(' serviceType manquant dans le payload:', payload);
       throw new Error('serviceType manquant dans claim');
     }
 
-    console.log('🔍 Service Type détecté:', claim.serviceType);
+    console.log(' Service Type détecté:', claim.serviceType);
 
     // 1. Vérifier si une équipe peut être créée
     const canCreateTeam = await this.checkTeamAvailability(claim.serviceType);
@@ -151,8 +153,11 @@ export class ClaimsService {
       });
       console.log('Équipe créée avec succès, ID:', teamId);
 
-
+const dispatcher = new TeamEmailDispatcher();
+await dispatcher.sendAfterTeamAssignment(createdClaim.id, teamId);
+console.log("Emails envoyés aux membres de l'équipe ");
       //Après qu'on envoi les emails on change le status en in_progress
+      
        await sendStatusUpdate({
         claimId: payload.claimId,
         claimNumber: payload.claimNumber,

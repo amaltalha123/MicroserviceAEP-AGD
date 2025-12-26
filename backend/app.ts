@@ -8,6 +8,8 @@ import UserGetClaimRoutes from './src/api/getUserClaims.routes';
 import { startKafkaConsumer } from './src/kafka/consumer'; 
 import teamRoutes from "./src/api/team.routes";
 import supervisorRoutes from "./src/api/supervisor.routes";
+import claimsRoutes from './src/api/claims.routes';
+
 //Démarrage du consumer Kafka
 async function bootstrap() {
   await startKafkaConsumer();
@@ -75,7 +77,7 @@ app.get('/health', (req, res) => {
 // app.use('/api/teams', teamsRoutes);
 app.use("/api/team", teamRoutes);
 app.use("/api/supervisor", supervisorRoutes);
-
+app.use('/api/claims', claimsRoutes);
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
