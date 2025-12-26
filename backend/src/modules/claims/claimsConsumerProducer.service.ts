@@ -73,8 +73,8 @@ export class ClaimsService {
       const action=await prisma.claim_actions.create({
         data: {
           claim_id: createdClaim.id,
-          action_type: 'REJECTION_NO_TEAM',
-          action_description: 'REJECTION_NO_TEAM',
+          action_type: 'réclamation enregistrée',
+          action_description: 'réclamation enregistrée',
           previous_status: 'submitted',
           new_status: 'rejected'
         },
@@ -137,8 +137,8 @@ export class ClaimsService {
       await prisma.claim_actions.create({
         data: {
           claim_id: createdClaim.id,
-          action_type: 'REJECTION_NO_TEAM',
-          action_description: 'REJECTION_NO_TEAM',
+          action_type: 'équipe assigné',
+          action_description: 'équipe assigné',
           previous_status: 'submitted',
           new_status: 'assigned'
         },
@@ -146,18 +146,25 @@ export class ClaimsService {
       await sendStatusUpdate({
         claimId: payload.claimId,
         claimNumber: payload.claimNumber,
-        previousStatus: 'received',
+        previousStatus: 'submitted',
         newStatus: 'assigned',
         reason: 'Équipe assignée avec succès',
         serviceReference: createdClaim.internal_ticket_number,
       });
       console.log('Équipe créée avec succès, ID:', teamId);
 
-const dispatcher = new TeamEmailDispatcher();
-await dispatcher.sendAfterTeamAssignment(createdClaim.id, teamId);
-console.log("Emails envoyés aux membres de l'équipe ");
+      const dispatcher = new TeamEmailDispatcher();
+      await dispatcher.sendAfterTeamAssignment(createdClaim.id, teamId);
+      console.log("Emails envoyés aux membres de l'équipe ");
       //Après qu'on envoi les emails on change le status en in_progress
       
+       await prisma.claims.update({
+        where: { id: createdClaim.id },
+        data: {
+          status: 'in_progress',
+          team_assigned_at: new Date(),
+        },
+      });
        await sendStatusUpdate({
         claimId: payload.claimId,
         claimNumber: payload.claimNumber,
@@ -170,8 +177,8 @@ console.log("Emails envoyés aux membres de l'équipe ");
       await prisma.claim_actions.create({
         data: {
           claim_id: createdClaim.id,
-          action_type: 'REJECTION_NO_TEAM',
-          action_description: 'REJECTION_NO_TEAM',
+          action_type: 'en cours de traitement par le team',
+          action_description: 'en cours de traitement par le team',
           previous_status: 'assigned',
           new_status: 'in_progress'
         },

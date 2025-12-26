@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 
 const API_URL = "http://localhost:3001";
 
-export default function EntryPage() {
+export default async function EntryPage() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
 
