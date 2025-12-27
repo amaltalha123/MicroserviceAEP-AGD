@@ -1,6 +1,6 @@
 // src/pages/ClaimDetail.jsx
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate , useLocation} from "react-router-dom";
 import Layout from "../layout/Layout";
 import {
   ArrowLeft,
@@ -19,6 +19,20 @@ const API_BASE = import.meta?.env?.VITE_API_URL || "http://localhost:3001";
 const ClaimDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+const location = useLocation();
+
+const tokenFromUrl = new URLSearchParams(location.search).get("token");
+const token = tokenFromUrl || sessionStorage.getItem("token");
+
+// si token existe dans l'URL, on le sauvegarde pour les autres pages
+useEffect(() => {
+  if (tokenFromUrl) sessionStorage.setItem("token", tokenFromUrl);
+}, [tokenFromUrl]);
+
+const backToClaims = () => {
+  if (!token) return navigate("/sign-in");
+  navigate(`/claims?token=${encodeURIComponent(token)}`);
+};
 
   const [claim, setClaim] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -181,7 +195,7 @@ const ClaimDetail = () => {
         <div className="p-6">
           <p className="text-red-600">{error}</p>
           <button
-            onClick={() => navigate("/claims")}
+           onClick={backToClaims}
             className="mt-4 text-blue-600 hover:text-blue-800"
           >
             Retour aux réclamations
@@ -198,7 +212,7 @@ const ClaimDetail = () => {
   return (
     <Layout title={claim.claimNumber || "Détail réclamation"} subtitle={claim.internalTicket || ""}>
       <button
-        onClick={() => navigate("/claims")}
+        onClick={backToClaims}
         className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
       >
         <ArrowLeft className="w-5 h-5" />

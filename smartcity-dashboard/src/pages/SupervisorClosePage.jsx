@@ -10,7 +10,7 @@ import {
   RefreshCw,
   Lock,
 } from "lucide-react";
-import { API_BASE } from "../config";
+
 
 export default function SupervisorClosePage() {
   const [params] = useSearchParams();
@@ -33,7 +33,7 @@ export default function SupervisorClosePage() {
       setErrorMsg("");
       try {
         const res = await fetch(
-          `${API_BASE}/api/supervisor/claim/${encodeURIComponent(claimId)}`
+          `${import.meta.env.VITE_API_BASE}/api/supervisor/claim/${encodeURIComponent(claimId)}`
         );
         const data = await res.json();
         if (!res.ok) throw new Error(data?.message || "Erreur lors du chargement");
@@ -56,7 +56,7 @@ export default function SupervisorClosePage() {
     }
 
     try {
-      const res = await fetch(`${API_BASE}/api/supervisor/close`, {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE}/api/supervisor/close`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ claimId }),

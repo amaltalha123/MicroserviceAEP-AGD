@@ -98,7 +98,7 @@ export class TeamEmailDispatcher {
     };
 
     const from = process.env.SMTP_FROM || process.env.SMTP_USER!;
-    const base = process.env.FRONT_BASE_URL || "http://localhost:5173";
+    const base = process.env.FRONT_BASE_URL || "https://sourly-zincoid-shaina.ngrok-free.dev";
 
     const resolutionLink = `${base}/team/resolve?token=${encodeURIComponent(
       team.resolution_token

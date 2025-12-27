@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
-import { API_BASE } from "../config";
+
 
 export default function TeamResolvePage() {
   const [params] = useSearchParams();
@@ -24,7 +24,7 @@ export default function TeamResolvePage() {
       setErrorMsg("");
       try {
         const res = await fetch(
-          `${API_BASE}/api/team/resolve-info?token=${encodeURIComponent(token)}`
+          `${import.meta.env.VITE_API_BASE}/api/team/resolve-info?token=${encodeURIComponent(token)}`
         );
         const data = await res.json();
         if (!res.ok) throw new Error(data?.message || "Erreur lors du chargement");
@@ -48,7 +48,7 @@ export default function TeamResolvePage() {
     }
 
     try {
-      const res = await fetch(`${API_BASE}/api/team/resolve`, {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE}/api/team/resolve`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
