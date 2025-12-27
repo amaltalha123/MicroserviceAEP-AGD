@@ -29,8 +29,8 @@ export class KafkaSimulator {
       },
       claim: {
         serviceType: ServiceType.LIGHTING,
-        title: 'Test de réclamation waste',
-        description: 'Ceci est une réclamation de test de waste',
+        title: 'Test de réclamation lighting',
+        description: 'Ceci est une réclamation de test de lighting',
         priority: PriorityLevel.MEDIUM,
         location: {
           address: 'Rue Mohammed V, Marrakech',

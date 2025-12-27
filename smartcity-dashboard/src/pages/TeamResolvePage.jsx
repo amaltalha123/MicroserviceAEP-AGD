@@ -19,13 +19,26 @@ export default function TeamResolvePage() {
       return;
     }
 
-    (async () => {
+   (async () => {
       setLoading(true);
       setErrorMsg("");
       try {
         const res = await fetch(
-          `${import.meta.env.VITE_API_BASE}/api/team/resolve-info?token=${encodeURIComponent(token)}`
+          `https://unshanked-unagriculturally-braylon.ngrok-free.dev/api/team/resolve-info?token=${encodeURIComponent(token)}`,
+          {
+            headers: {
+              'ngrok-skip-browser-warning': 'true',
+              'Content-Type': 'application/json'
+            }
+          }
         );
+        
+        // Vérifier si la réponse est bien du JSON
+        const contentType = res.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          throw new Error('La réponse du serveur n\'est pas au format JSON. Vérifie que l\'API fonctionne correctement.');
+        }
+        
         const data = await res.json();
         if (!res.ok) throw new Error(data?.message || "Erreur lors du chargement");
         setClaim(data.claim);
@@ -48,14 +61,23 @@ export default function TeamResolvePage() {
     }
 
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE}/api/team/resolve`, {
+      const res = await fetch(`https://unshanked-unagriculturally-braylon.ngrok-free.dev/api/team/resolve`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "true"
+        },
         body: JSON.stringify({
           token,
           resolution_description: resolutionDescription,
         }),
       });
+
+      // Vérifier si la réponse est bien du JSON
+      const contentType = res.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('La réponse du serveur n\'est pas au format JSON. Vérifie que l\'API fonctionne correctement.');
+      }
 
       const data = await res.json();
       if (!res.ok) throw new Error(data?.message || "Erreur lors de l’envoi");

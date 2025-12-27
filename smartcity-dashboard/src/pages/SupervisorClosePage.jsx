@@ -33,9 +33,23 @@ export default function SupervisorClosePage() {
       setErrorMsg("");
       try {
         const res = await fetch(
-          `${import.meta.env.VITE_API_BASE}/api/supervisor/claim/${encodeURIComponent(claimId)}`
+       `https://unshanked-unagriculturally-braylon.ngrok-free.dev/api/supervisor/claim/${encodeURIComponent(claimId)}`,
+          {
+            headers: {
+              'ngrok-skip-browser-warning': 'true',
+              'Content-Type': 'application/json'
+            }
+          }
         );
-        const data = await res.json();
+
+      // Vérifier si la réponse est bien du JSON
+      const contentType = res.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('La réponse du serveur n\'est pas au format JSON. Vérifie que l\'API fonctionne correctement.');
+      }
+
+      const data = await res.json();
+        
         if (!res.ok) throw new Error(data?.message || "Erreur lors du chargement");
         setClaim(data.claim);
       } catch (e) {
@@ -56,12 +70,22 @@ export default function SupervisorClosePage() {
     }
 
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE}/api/supervisor/close`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ claimId }),
-      });
-      const data = await res.json();
+      const res = await fetch(`https://unshanked-unagriculturally-braylon.ngrok-free.dev/api/supervisor/close`, {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "true"
+      },
+      body: JSON.stringify({ claimId }),
+    });
+
+    // Vérifier si la réponse est bien du JSON
+    const contentType = res.headers.get('content-type');
+if (!contentType || !contentType.includes('application/json')) {
+  throw new Error('La réponse du serveur n\'est pas au format JSON. Vérifie que l\'API fonctionne correctement.');
+}
+
+const data = await res.json();
       if (!res.ok) throw new Error(data?.message || "Erreur clôture");
       setSuccessMsg("✓ Réclamation clôturée avec succès.");
     } catch (e) {
