@@ -28,10 +28,10 @@ export class KafkaSimulator {
         phone: '0612345678',
       },
       claim: {
-        serviceType: ServiceType.LIGHTING,
-        title: 'Test de réclamation éclairage',
-        description: 'Ceci est une réclamation de test d éclairage',
-        priority: PriorityLevel.HIGH,
+        serviceType: ServiceType.WASTE,
+        title: 'Test de réclamation waste',
+        description: 'Ceci est une réclamation de test de waste',
+        priority: PriorityLevel.MEDIUM,
         location: {
           address: 'Rue Mohammed V, Marrakech',
           latitude: 31.6295,

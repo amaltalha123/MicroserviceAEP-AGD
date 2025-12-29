@@ -2,10 +2,13 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
-import kafkaTestRoutes from './src/api/kafka-test.routes';
-import UserGetClaimRoutes from './src/api/getUserClaims.routes';
+import kafkaTestRoutes from './api/kafka-test.routes';
+import UserGetClaimRoutes from './api/getUserClaims.routes';
 
-import { startKafkaConsumer } from './src/kafka/consumer'; 
+import { startKafkaConsumer } from './kafka/consumer'; 
+import teamRoutes from "./api/team.routes";
+import supervisorRoutes from "./api/supervisor.routes";
+import claimsRoutes from './api/claims.routes';
 
 //Démarrage du consumer Kafka
 async function bootstrap() {
@@ -24,7 +27,12 @@ app.use(cors({ origin: process.env.CORS_ORIGIN }));
 
 // Middlewares
 app.use(helmet());
-app.use(cors());
+app.use(
+  cors({
+    origin: process.env.CORS_ORIGIN,
+    credentials: true,
+  })
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -67,9 +75,11 @@ app.get('/health', (req, res) => {
 // app.use('/api/claims', claimsRoutes);
 // app.use('/api/employees', employeesRoutes);
 // app.use('/api/teams', teamsRoutes);
-
+app.use("/api/team", teamRoutes);
+app.use("/api/supervisor", supervisorRoutes);
+app.use('/api/claims', claimsRoutes);
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log(`Server running on http://localhost:${PORT}`);
 });
 
 export default app;
