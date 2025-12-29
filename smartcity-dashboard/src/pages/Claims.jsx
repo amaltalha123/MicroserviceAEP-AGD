@@ -36,15 +36,6 @@ const Claims = () => {
 
   // ✅ Premier useEffect : Vérification du token SSO
   useEffect(() => {
-<<<<<<< HEAD
-    const token = params.get("token");
-
-    if (!token) {
-      setErrorMsg("Paramètres manquants (token).");
-      setLoading(false);
-      return;
-    }
-=======
     const urlToken = params.get("token");
 const storedToken = sessionStorage.getItem("B_TOKEN");
 const token = urlToken || storedToken;
@@ -58,7 +49,6 @@ if (!token) {
 // si token vient de l'URL, on le sauvegarde
 if (urlToken) sessionStorage.setItem("B_TOKEN", urlToken);
 
->>>>>>> versionFinal
 
     (async () => {
       try {
@@ -232,25 +222,17 @@ navigate(`/claims/${claimId}${token ? `?token=${encodeURIComponent(token)}` : ""
       <Layout title="Erreur">
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
           <p className="text-red-800">{errorMsg}</p>
-<<<<<<< HEAD
-          <button 
-            onClick={() => window.location.href = '/login'}
-=======
         
           <button
             onClick={() => {
               const portal = import.meta.env.VITE_URL_FRONT_PORTAIL;
               window.location.href = `${portal}/sign-in`;
             }}
->>>>>>> versionFinal
             className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
           >
             Retour à la connexion
           </button>
-<<<<<<< HEAD
-=======
 
->>>>>>> versionFinal
         </div>
       </Layout>
     );
