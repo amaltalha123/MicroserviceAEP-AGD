@@ -1,0 +1,86 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: smartcity-postgres-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: smartcity_claims
+      POSTGRES_USER: dev_user
+      POSTGRES_PASSWORD: dev_password_2024
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+    - smartcity-network
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: smartcity-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: talha.amal@etu.uae.ac.ma
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    ports:
+      - "5051:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - smartcity-network
+    depends_on:
+      - postgres
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: smartcity-mailhog
+    networks:
+    - smartcity-network
+    ports:
+      - "1026:1025"
+      - "8026:8025"
+
+# Backend Node.js
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: smartcity_backend
+    restart: always
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: production
+      DB_HOST: postgres
+      DATABASE_URL: "postgresql://dev_user:dev_password_2024@postgres:5432/smartcity_claims?schema=public"
+      DB_PORT: 5432
+      DB_NAME: smartcity_claims
+      DB_USER: dev_user
+      DB_PASSWORD: dev_password_2024
+    depends_on:
+      - postgres
+    networks:
+      - smartcity-network
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+  # Frontend React
+  frontend:
+    build:
+      context: ./smartcity-dashboard
+      dockerfile: Dockerfile
+    container_name: smartcity_frontend
+    restart: always
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    networks:
+      - smartcity-network
+networks:
+  smartcity-network:
+    driver: bridge
+volumes:
+  postgres_data:
+  pgadmin_data:

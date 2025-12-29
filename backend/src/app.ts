@@ -2,13 +2,13 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
-import kafkaTestRoutes from './src/api/kafka-test.routes';
-import UserGetClaimRoutes from './src/api/getUserClaims.routes';
+import kafkaTestRoutes from './api/kafka-test.routes';
+import UserGetClaimRoutes from './api/getUserClaims.routes';
 
-import { startKafkaConsumer } from './src/kafka/consumer'; 
-import teamRoutes from "./src/api/team.routes";
-import supervisorRoutes from "./src/api/supervisor.routes";
-import claimsRoutes from './src/api/claims.routes';
+import { startKafkaConsumer } from './kafka/consumer'; 
+import teamRoutes from "./api/team.routes";
+import supervisorRoutes from "./api/supervisor.routes";
+import claimsRoutes from './api/claims.routes';
 
 //Démarrage du consumer Kafka
 async function bootstrap() {

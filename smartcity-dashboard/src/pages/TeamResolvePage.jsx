@@ -24,7 +24,7 @@ export default function TeamResolvePage() {
       setErrorMsg("");
       try {
         const res = await fetch(
-          `https://unshanked-unagriculturally-braylon.ngrok-free.dev/api/team/resolve-info?token=${encodeURIComponent(token)}`,
+          `https://localhost:3001/api/team/resolve-info?token=${encodeURIComponent(token)}`,
           {
             headers: {
               'ngrok-skip-browser-warning': 'true',
@@ -61,7 +61,7 @@ export default function TeamResolvePage() {
     }
 
     try {
-      const res = await fetch(`https://unshanked-unagriculturally-braylon.ngrok-free.dev/api/team/resolve`, {
+      const res = await fetch(`https://localhost:3001/api/team/resolve`, {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",

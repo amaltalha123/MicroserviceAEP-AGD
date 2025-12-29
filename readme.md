@@ -234,6 +234,7 @@ npm run build
 
 **Backend:**
 ```bash
+npm install
 npm run dev              # Mode développement
 npm run build            # Build TypeScript
 npm run start            # Production
@@ -241,6 +242,7 @@ npm run start            # Production
 
 **Frontend:**
 ```bash
+npm install
 npm run dev              # Mode développement
 npm run build            # Build production
 npm run preview          # Prévisualiser build

@@ -33,7 +33,7 @@ export default function SupervisorClosePage() {
       setErrorMsg("");
       try {
         const res = await fetch(
-       `https://unshanked-unagriculturally-braylon.ngrok-free.dev/api/supervisor/claim/${encodeURIComponent(claimId)}`,
+       `https://localhost:3001/api/supervisor/claim/${encodeURIComponent(claimId)}`,
           {
             headers: {
               'ngrok-skip-browser-warning': 'true',
@@ -70,7 +70,7 @@ export default function SupervisorClosePage() {
     }
 
     try {
-      const res = await fetch(`https://unshanked-unagriculturally-braylon.ngrok-free.dev/api/supervisor/close`, {
+      const res = await fetch(`https://localhost:3001/api/supervisor/close`, {
       method: "POST",
       headers: { 
         "Content-Type": "application/json",
