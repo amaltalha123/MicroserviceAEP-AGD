@@ -264,8 +264,4 @@ npm run preview          # Prévisualiser build
 
 ## Auteur
 
-**Votre Nom** - [@amaltalha](https://github.com/amaltalha123)
-
----
-
-**Version:** 1.0.0 | **Date:** 27 Décembre 2024
+**Nom** - [@amaltalha](https://github.com/amaltalha123)
